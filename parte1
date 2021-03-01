@@ -1,0 +1,91 @@
+#include <stdio.h>
+#include <locale.h>
+
+//Primeira parte do trabalho
+//Sofia Kitaeva e João Vitor Spala
+
+typedef struct Jogada{
+    int linhaDe, colunaDe, linhaPara, colunaPara;
+}jogada;
+
+void IniciaTabuleiro(int *p[9][9]){
+   for(int i=1; i<9; i++){ //colocar peões
+       *p[2][i]=1;
+       *p[7][i]=-1;
+   }
+   
+   for(int i=1; i<9; i++){ //coordenadas laterais do tabuleiro
+        *p[i][0]=i;
+        *p[0][i]=i;
+   }
+   
+   for(int i=1; i<9; i++){ //peça brancas
+        if(i==1 || i==8) //torres
+            *p[1][i]=4;
+        else if(i==2 || i==7) //cavalos
+            *p[1][i]=2;
+            else if(i==3 || i==6) //bispos
+                *p[1][i]=3;
+   }
+   *p[1][4]=5; //rainha
+   *p[1][5]=6; //rei
+   
+   for(int i=1; i<9; i++){ //todas as peças pretas
+       *p[8][i]=(*p[0][i])*-1;
+   }
+}
+
+void MostrarTabuleiro(int tab[9][9]){
+    for(int i=0; i<9; i++){
+        for(int j=0; j<9; j++){
+            if(tab[i][j]<0)
+                printf("%d ", tab[i][j]);
+            else
+                printf("%d  ", tab[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+void Movimento(int *peca[9][9]){
+    for(int i=1; i<9; i++){
+        for(int j=1; j<9; j++){
+            if(*peca[i][j]==1 || *peca[i][j]==-1){ //movimento dos peões
+                if(i==2 && *peca[i][j]==1)
+            }
+        }
+    }
+}
+
+int main(){
+    int tabuleiro[9][9];
+    int *pT[9][9];
+    
+    
+    for(int i=0; i<9; i++){ //zerar tabuleiro
+        for(int j=0; j<9; j++){
+            tabuleiro[i][j]=0;
+            pT[i][j]=&tabuleiro[i][j]; //associar cada casa da matriz a um ponteiro
+        }
+    }
+    
+    IniciaTabuleiro(pT); //passa matriz por ponteiro
+    
+    MostrarTabuleiro(tabuleiro);
+    
+    jogada possi
+      printf("Insira as coordenadas da peça que deseja movimentar\n");
+    while(1==1){
+        int i, j;
+        scanf("%d %d", &i, &j);
+        if(tabuleiro[i][j]==0 || i==0 || j==0){
+            printf("Coordenadas inválidas\n");
+        }
+        else{
+            Movimento(pT);
+        }    
+        
+    }
+
+    return 0;
+}
