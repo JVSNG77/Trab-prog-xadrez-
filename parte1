@@ -35,18 +35,6 @@ void IniciaTabuleiro(int *p[9][9]){
    }
 }
 
-void Movimento(int *peca[9][9], jogada possi[20]){
-    for(int i=1; i<9; i++){
-        for(int j=1; j<9; j++){
-            if(*peca[i][j]==1 || *peca[i][j]==-1){ //movimento dos peões
-                if(i==2 && *peca[i][j]==1){
-                       
-                }
-            }
-        }
-    }
-}
-
 void Movimento(int *peca[9][9], jogada *possi[20]){
     for(int i=1; i<9; i++){
         for(int j=1; j<9; j++){
