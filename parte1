@@ -73,7 +73,7 @@ int main(){
     
     MostrarTabuleiro(tabuleiro);
     
-    jogada possi
+    jogada possiveis[20];
       printf("Insira as coordenadas da peça que deseja movimentar\n");
     while(1==1){
         int i, j;
@@ -82,7 +82,7 @@ int main(){
             printf("Coordenadas inválidas\n");
         }
         else{
-            Movimento(pT);
+            Movimento(pT, possiveis);
         }    
         
     }
