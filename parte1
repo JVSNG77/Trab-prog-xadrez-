@@ -35,18 +35,99 @@ void IniciaTabuleiro(int *p[9][9]){
    }
 }
 
-void Movimento(int *peca[9][9], jogada *possi[20]){
-    for(int i=1; i<9; i++){
-        for(int j=1; j<9; j++){
-            if(*peca[i][j]==1 || *peca[i][j]==-1){ //movimento dos peões
-                if(i==2 && *peca[i][j]==1){
-                    
-                }
-            }
+void MostrarTabuleiro(int tab[9][9]){
+    for(int i=0; i<9; i++){
+        for(int j=0; j<9; j++){
+            if(tab[i][j]<0)
+                printf("%d ", tab[i][j]);
+            else
+                printf("%d  ", tab[i][j]);
         }
+        printf("\n");
     }
 }
 
+void MovimentoPossivel(int *peca[9][9], jogada *possi[30]){
+	int c=0;
+	for(int i=0; i<30; i++){
+        (*possi[i]).linhaDe=0;
+        (*possi[i]).colunaDe=0;
+        (*possi[i]).linhaPara=0;
+        (*possi[i]).colunaPara=0;
+    }
+    for(int i=1; i<9; i++){
+        for(int j=1; j<9; j++){
+        	
+            if(*peca[i][j]==4)//se for torre branca
+			{
+            	for(int x=i;x>=0;x--)//torre pra cima
+				{
+					(*possi[c]).linhaDe=i;
+            		(*possi[c]).colunaDe=j;
+            		(*possi[c]).colunaPara=j;
+            		if(*peca[x][j]==0){
+            			(*possi[c]).linhaPara=x;
+            			c++;
+            			else if(*peca[x][j]<0){
+            				(*possi[c]).linhaPara=x;
+            				c++;
+            				break;
+						}
+					}
+				}
+				for(int x=i; x<=9;x++)//torre pra baixo
+				{
+					(*possi[c]).linhaDe=i;
+            		(*possi[c]).colunaDe=j;
+            		(*possi[c]).colunaPara=j;
+            		if(*peca[x][j]==0){
+            			(*possi[c]).linhaPara=x;
+            			c++;
+            			else if(*peca[x][j]<0){
+            				(*possi[c]).linhaPara=x;
+            				c++;
+            				break;
+						}
+					}
+				}
+				for(int x=j; x>=0;x--)//torre pra esquerda
+				{
+					(*possi[c]).linhaDe=i;
+            		(*possi[c]).colunaDe=j;
+            		(*possi[c]).linhaPara=i;
+            		if(*peca[x][j]==0){
+            			(*possi[c]).colunaPara=x;
+            			c++;
+            			else if(*peca[x][j]<0){
+            				(*possi[c]).colunaPara=x;
+            				c++;
+            				break;
+						}
+					}
+				}
+				for(int x=j; x<=9;x++)//torre pra direita
+				{
+					(*possi[c]).linhaDe=i;
+            		(*possi[c]).colunaDe=j;
+            		(*possi[c]).linhaPara=i;
+            		if(*peca[x][j]==0){
+            			(*possi[c]).colunaPara=x;
+            			c++;
+            			else if(*peca[x][j]<0){
+            				(*possi[c]).colunaPara=x;
+            				c++;
+            				break;
+						}
+					}		
+				} 	
+    	    } 
+		 	if(*peca[i][j]==3)//se for bispo
+			 {
+		 		for(int x=)	
+			 }
+    	}
+	}
+}
 int main(){
     int tabuleiro[9][9];
     int *pT[9][9];
@@ -64,9 +145,9 @@ int main(){
     MostrarTabuleiro(tabuleiro);
     
     jogada possiveis[20];
-    jogada*pP[20];
+    jogada *pP[20];
     
-    for(int i=0; i<20; i++){
+    for(int i=0; i<30; i++){
         pP[i]=&possiveis[i];
     }
     
