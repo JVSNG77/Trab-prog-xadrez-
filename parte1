@@ -59,25 +59,610 @@ int ChecarVencedor(int *tab[9][9]){
 void MovimentoPossivel(int *peca[9][9], jogada *possi[30], int i, int j){
 	int c=0;
 	int coluna=j;
-	/*
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	*/
-	for(int x=0; x<30; x++){
+		for(int x=0; x<30; x++){
         (*possi[x]).linhaDe=0;
         (*possi[x]).colunaDe=0;
         (*possi[x]).linhaPara=0;
         (*possi[x]).colunaPara=0;
     }
+	
+	  if ((*peca[i][j] == 1 && *peca[i + 1][j] == 0) || (*peca[i][j] == -1 && *peca[i - 1][j] == 0)) //movimento dos peões   
+  {				
+      if (*peca[i][j] == 1){ //peão branco inicial
+	       if (*peca[i][j] == 1 && i==2){ 
+	        if (*peca[i + 2][j] == 0){
+	         (*possi[c]).linhaDe = i;
+	         (*possi[c]).colunaDe = j;
+	         (*possi[c]).linhaPara = i + 2;
+	         (*possi[c]).colunaPara = j;
+	         c++;
+	        }
+	       }
+     if (*peca[i + 1][j] == 0)
+	 {			//peC#o branco
+	   (*possi[c]).linhaDe = i;
+	   (*possi[c]).colunaDe = j;
+	   (*possi[c]).linhaPara = i + 1;
+	   (*possi[c]).colunaPara = j;
+	   c++;
+	 }
+     }
+    if (*peca[i][j] == -1){ //peão preto inicial
+	       if (*peca[i][j] == -1 && i==7){ 
+	        if (*peca[i - 2][j] == 0){
+	         (*possi[c]).linhaDe = i;
+	         (*possi[c]).colunaDe = j;
+	         (*possi[c]).linhaPara = i - 2;
+	         (*possi[c]).colunaPara = j;
+	         c++;
+	        }
+	       }
+     if (*peca[i - 1][j] == 0)
+	 {			//peão preto
+	   (*possi[c]).linhaDe = i;
+	   (*possi[c]).colunaDe = j;
+	   (*possi[c]).linhaPara = i - 1;
+	   (*possi[c]).colunaPara = j;
+	   c++;
+	 }
+    }
+  
+  if (*peca[i][j] == 1 && *peca[i + 1][j - 1] != 0) //captura do peão branco
+  {				
+    (*possi[c]).linhaDe = i;
+    (*possi[c]).colunaDe = j;
+    (*possi[c]).linhaPara = i + 1;
+    (*possi[c]).colunaPara = j - 1;
+    c++;
+  }
+  if (*peca[i][j] == 1 && *peca[i + 1][j + 1] != 0)
+  {
+	(*possi[c]).linhaDe = i;
+	(*possi[c]).colunaDe = j;
+	(*possi[c]).linhaPara = i + 1;
+	(*possi[c]).colunaPara = j + 1;
+	c++;
+  }
+  if (*peca[i][j] == -1 && *peca[i - 1][j - 1] != 0) //captura do peão preto
+  {				
+	(*possi[c]).linhaDe = i;
+	(*possi[c]).colunaDe = j;
+	(*possi[c]).linhaPara = i - 1;
+	(*possi[c]).colunaPara = j - 1;
+	c++;
+  }
+  if (*peca[i][j] == -1 && *peca[i - 1][j + 1] != 0)
+  {
+	(*possi[c]).linhaDe = i;
+	(*possi[c]).colunaDe = j;
+	(*possi[c]).linhaPara = i - 1;
+	(*possi[c]).linhaPara = j + 1;
+	c++;
+  }
+      
+    if(*peca[i][j] == 2 ||  *peca[i][j] == -2) //cavalos
+    {
+        
+    }
+    
+    if(*peca[i][j] == 6 ||  *peca[i][j] == -6) //reis
+    {
+        if(*peca[i][j] == 6){ //rei branco
+            if(i==1 && j==1){
+                if(*peca[i+1][j] == 0 || *peca[i+1][j] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i+1][j+1] == 0 || *peca[i+1][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j + 1;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j + 1;
+	                c++;
+                }
+            }
+            if(i==1 && j==8){
+                if(*peca[i+1][j] == 0 || *peca[i+1][j] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i+1][j-1] == 0 || *peca[i+1][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j - 1;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j - 1;
+	                c++;
+                }
+            }
+            if(i==1){
+                if(*peca[i+1][j] == 0 || *peca[i+1][j] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i+1][j+1] == 0 || *peca[i+1][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i+1][j-1] == 0 || *peca[i+1][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+            }
+            if(i==8 && j==8){
+                if(*peca[i-1][j] == 0 || *peca[i-1][j] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j - 1;
+	                c++;
+                }
+                if(*peca[i-1][j-1] == 0 || *peca[i-1][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i-1;
+	                (*possi[c]).linhaPara = j - 1;
+	                c++;
+                }
+            }
+            if(i==8 && j==1){
+                if(*peca[i-1][j] == 0 || *peca[i-1][j] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j + 1;
+	                c++;
+                }
+                if(*peca[i-1][j-1] == 0 || *peca[i-1][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i-1;
+	                (*possi[c]).linhaPara = j + 1;
+	                c++;
+                }
+        }
+            if(i==8){
+                if(*peca[i-1][j] == 0 || *peca[i-1][j] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i-1][j+1] == 0 || *peca[i-1][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i-1][j-1] == 0 || *peca[i-1][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+            }
+            if(i!=1 && i!=8 && j!=1 && j!=8){
+                if(*peca[i+1][j] == 0 || *peca[i+1][j] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i+1][j+1] == 0 || *peca[i+1][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i+1][j-1] == 0 || *peca[i+1][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+                if(*peca[i-1][j] == 0 || *peca[i-1][j] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i-1][j+1] == 0 || *peca[i-1][j+1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i-1][j-1] == 0 || *peca[i-1][j-1] < 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+            }
+            
+        }
+        if(*peca[i][j] == -6){ //rei branco
+            if(i==1 && j==1){
+                if(*peca[i+1][j] == 0 || *peca[i+1][j] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i+1][j+1] == 0 || *peca[i+1][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j + 1;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j + 1;
+	                c++;
+                }
+            }
+            if(i==1 && j==8){
+                if(*peca[i+1][j] == 0 || *peca[i+1][j] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i+1][j-1] == 0 || *peca[i+1][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j - 1;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j - 1;
+	                c++;
+                }
+            }
+            if(i==1){
+                if(*peca[i+1][j] == 0 || *peca[i+1][j] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i+1][j+1] == 0 || *peca[i+1][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i+1][j-1] == 0 || *peca[i+1][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+            }
+            if(i==8 && j==8){
+                if(*peca[i-1][j] == 0 || *peca[i-1][j] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j - 1;
+	                c++;
+                }
+                if(*peca[i-1][j-1] == 0 || *peca[i-1][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i-1;
+	                (*possi[c]).linhaPara = j - 1;
+	                c++;
+                }
+            }
+            if(i==8 && j==1){
+                if(*peca[i-1][j] == 0 || *peca[i-1][j] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j + 1;
+	                c++;
+                }
+                if(*peca[i-1][j-1] == 0 || *peca[i-1][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i-1;
+	                (*possi[c]).linhaPara = j + 1;
+	                c++;
+                }
+        }
+            if(i==8){
+                if(*peca[i-1][j] == 0 || *peca[i-1][j] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i-1][j+1] == 0 || *peca[i-1][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i-1][j-1] == 0 || *peca[i-1][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+            }
+            if(i!=1 && i!=8 && j!=1 && j!=8){
+                if(*peca[i+1][j] == 0 || *peca[i+1][j] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i+1][j+1] == 0 || *peca[i+1][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i+1][j-1] == 0 || *peca[i+1][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i + 1;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+                if(*peca[i][j+1] == 0 || *peca[i][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i][j-1] == 0 || *peca[i][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+                if(*peca[i-1][j] == 0 || *peca[i-1][j] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j;
+	                c++;
+                }
+                if(*peca[i-1][j+1] == 0 || *peca[i-1][j+1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j+1;
+	                c++;
+                }
+                if(*peca[i-1][j-1] == 0 || *peca[i-1][j-1] > 0)
+                {
+                    (*possi[c]).linhaDe = i;
+        	        (*possi[c]).colunaDe = j;
+	                (*possi[c]).linhaPara = i - 1;
+	                (*possi[c]).linhaPara = j-1;
+	                c++;
+                }
+            }
+            
+    }
+    }
+}
             if(*peca[i][j]==4){//se for torre branca
             	for(int x=i;x>=1;x--){//torre branca pra cima
 					(*possi[c]).linhaDe=i;
