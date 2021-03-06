@@ -91,7 +91,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 	}//peão branco
 
 	if (*peca[i][j] == -1 ){
-		if (i == 7 && *peca[i - 2][j] == 0 && *peca[i + 1][j] == 0){  //peão preto inicial
+		if (i == 7 && *peca[i - 2][j] == 0 && *peca[i - 1][j] == 0){  //peão preto inicial
 			(*possi[c]).linhaDe = i;
 			(*possi[c]).colunaDe = j;
 			(*possi[c]).linhaPara = i - 2;
