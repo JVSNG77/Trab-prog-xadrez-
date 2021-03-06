@@ -508,7 +508,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 	} //cavalo preto
 
     if (*peca[i][j] == 3){		
-		for (int x = i; x >= 1; x--){		
+		for (int x = i; x > 1; x--){		
 			(*possi[x]).linhaDe = i;
 			(*possi[x]).colunaDe = j;
 			if (coluna < 8 && *peca[x - 1][coluna + 1] == 0){
@@ -528,7 +528,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 			coluna++;
 		}//bispo branco direita e cima
 		coluna = j;
-		for (int x = i; x <= 8; x++){	
+		for (int x = i; x < 8; x++){	
 			(*possi[x]).linhaDe = i;
 			(*possi[x]).colunaDe = j;
 			if (coluna < 8 && *peca[x + 1][coluna + 1] == 0){
@@ -548,7 +548,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 			coluna++;
 		}//bispo branco direita e baixo
 		coluna = j;
-		for (int x = i; x >= 1; x--){	
+		for (int x = i; x > 1; x--){	
 			if (coluna > 1 && *peca[x - 1][coluna - 1] == 0){
 				(*possi[c]).linhaPara = x - 1;
 				(*possi[c]).colunaPara = coluna - 1;
@@ -566,7 +566,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 			coluna--;
 		}//bispo branco esquerda e cima
 		coluna = j;
-		for (int x = i; x <= 8; x++){			
+		for (int x = i; x < 8; x++){			
 			if (coluna > 1 && *peca[x + 1][coluna - 1] == 0){
 				(*possi[c]).linhaPara = x + 1;
 				(*possi[c]).colunaPara = coluna - 1;
@@ -586,7 +586,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 	} //bispo branco
 	
 	if (*peca[i][j] == -3){		
-		for (int x = i; x >= 1; x--){	
+		for (int x = i; x > 1; x--){	
 			(*possi[x]).linhaDe = i;
 			(*possi[x]).colunaDe = j;
 			if (coluna < 8 && *peca[x - 1][coluna + 1] == 0){
@@ -606,7 +606,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 			coluna++;
 		}//bispo preto direita e cima
 		coluna = j;
-		for (int x = i; x <= 8; x++){	
+		for (int x = i; x < 8; x++){	
 			(*possi[x]).linhaDe = i;
 			(*possi[x]).colunaDe = j;
 			if (coluna < 8 && *peca[x + 1][coluna + 1] == 0){
@@ -626,7 +626,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 			coluna++;
 		}//bispo preto direita e baixo
 		coluna = j;
-		for (int x = i; x >= 1; x--){	
+		for (int x = i; x > 1; x--){	
 			if (coluna > 1 && *peca[x - 1][coluna - 1] == 0){
 				(*possi[c]).linhaPara = x - 1;
 				(*possi[c]).colunaPara = coluna - 1;
@@ -644,7 +644,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 			coluna--;
 		}//bispo preto esquerda e cima
 		coluna = j;
-		for (int x = i; x <= 8; x++){	
+		for (int x = i; x < 8; x++){	
 			if (coluna > 1 && *peca[x + 1][coluna - 1] == 0){
 				(*possi[c]).linhaPara = x + 1;
 				(*possi[c]).colunaPara = coluna - 1;
@@ -1559,7 +1559,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 				(*possi[c]).linhaDe = i;
 				(*possi[c]).colunaDe = j;
 				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).Para = j - 1;
+				(*possi[c]).colunaPara = j - 1;
 				c++;
 			}
 		}
@@ -1574,7 +1574,7 @@ void EscolherMovimento (int *tab[9][9], jogada * possiveis[30], int i, int j, in
 }
 
 int main (){
-	setlocale (LC_ALL, "");
+    setlocale (LC_ALL, "");
 	int tabuleiro[9][9];
 	int *pT[9][9];
 	int item, flag, turno=0;
