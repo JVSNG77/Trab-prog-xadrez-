@@ -1559,7 +1559,7 @@ void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
 				(*possi[c]).linhaDe = i;
 				(*possi[c]).colunaDe = j;
 				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j - 1;
+				(*possi[c]).Para = j - 1;
 				c++;
 			}
 		}
@@ -1574,7 +1574,7 @@ void EscolherMovimento (int *tab[9][9], jogada * possiveis[30], int i, int j, in
 }
 
 int main (){
-    setlocale (LC_ALL, "");
+	setlocale (LC_ALL, "");
 	int tabuleiro[9][9];
 	int *pT[9][9];
 	int item, flag, turno=0;
@@ -1611,7 +1611,7 @@ int main (){
 		else if(tabuleiro[i][j]>0 && turno%2!=0)
 			printf("O turno atual é das peças pretas\n");
 		else{
-			if (tabuleiro[i][j] == 0 || i>8 || i<1 || j>8 || j<1)
+			if (tabuleiro[i][j] == 0 || i == 0 || j == 0)
 				printf ("Coordenadas inválidas\n");
 			else
 		{
