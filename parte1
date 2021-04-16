@@ -3,1656 +3,1773 @@
 #include <stdlib.h>
 #include <windows.h>
 
-//Primeira parte do trabalho
+//Terceira parte do trabalho
 //Sofia Kitaeva e João Vitor Spala
 
-typedef struct Jogada{
+struct Jogada{
 	int linhaDe, colunaDe, linhaPara, colunaPara;
-} jogada;
+	struct Jogada *prox, *ant;
+};
 
-void IniciaTabuleiro (int *p[9][9]){
-	for (int i = 1; i < 9; i++){				//colocar peões
-		*p[2][i] = 1;
-		*p[7][i] = -1;
-	}
+struct Peca{
+	int codigo;
+	int linha,coluna;
+	int ataques;
+	struct Peca *prox,*ant;
+};
 
-	for (int i = 1; i < 9; i++){				//coordenadas laterais do tabuleiro
-		*p[i][0] = i;
-		*p[0][i] = i;
-	}
+struct Posicao{
+	int qtdBrancas;
+	struct Peca *brancas;
+	int qtdPretas;
+	struct Peca *pretas;
+	int jogVez;
+	struct Peca *tabu[8][8];
+};
 
-	for (int i = 1; i < 9; i++)
-	{				//peça brancas
-		if (i == 1 || i == 8)	//torres
-			*p[1][i] = 4;
-		else if (i == 2 || i == 7)	//cavalos
-			*p[1][i] = 2;
-		else if (i == 3 || i == 6)	//bispos
-			*p[1][i] = 3;
-	}
-
-	*p[1][4] = 5;			//rainha
-	*p[1][5] = 6;			//rei
-
-	for (int i = 1; i < 9; i++)
-	{				//todas as peças pretas
-		*p[8][i] = (*p[1][i]) * -1;
-	}
+struct Peca* criaPeca(int i, int j, struct Peca* lista){
+	struct Peca *nova= (struct Peca*) malloc(sizeof(struct Peca));
+	nova->linha=i;
+	nova->coluna=j;
+	nova->prox=lista->prox;
+	nova->ant=lista;
+	lista->prox->ant=nova;
+	lista->prox=nova;
+	nova->ataques=0;
+	
+	if(i==1) nova->codigo=1;
+	else if(i==6) nova->codigo=-1;
+	else if(i==0 && (j==0 || j==7)) nova->codigo=4;
+	else if(i==0 && (j==2 || j==5)) nova->codigo=3;
+	else if(i==0 && (j==1 || j==6)) nova->codigo=2;
+	else if(i==0 && j==3) nova->codigo=5;
+	else if(i==0 && j==4) nova->codigo=6;
+	else if(i==7 && (j==0 || j==7)) nova->codigo=-4;
+	else if(i==7 && (j==2 || j==5)) nova->codigo=-3;
+	else if(i==7 && (j==1 || j==6)) nova->codigo=-2;
+	else if(i==7 && j==3) nova->codigo=-5;
+	else if(i==7 && j==4) nova->codigo=-6;
+	
+	return nova;
 }
 
-void MostrarTabuleiro (int tab[9][9]){
-	for (int i = 0; i < 9; i++){
-		for (int j = 0; j < 9; j++){
-			if (tab[i][j] < 0)
-				printf ("%d ", tab[i][j]);
-			else
-				printf ("%d  ", tab[i][j]);
+struct Jogada* criaListaJ(){
+	struct Jogada *sent= (struct Jogada*) malloc(sizeof(struct Jogada));
+	sent->prox=sent;
+	sent->ant=sent;
+	
+	return sent;
+}
+
+struct Peca* criaListaPecas(){
+	struct Peca *sent= (struct Peca*) malloc(sizeof(struct Peca));
+	sent->prox=sent;
+	sent->ant=sent;
+	
+	return sent;
+}
+
+void criaListaB(struct Peca* lista, struct Peca* tab[8][8]){
+	for(int i=0; i<2; i++){
+		for(int j=0; j<8; j++){
+			tab[i][j]=criaPeca(i, j, lista);
 		}
-		printf ("\n");
 	}
 }
 
-int ChecarVencedor(int *tab[9][9]){
+void criaListaP(struct Peca *lista, struct Peca *tab[8][8]){
+	for(int i=6; i<8; i++){
+		for(int j=0; j<8; j++){
+			tab[i][j]=criaPeca(i, j, lista);
+		}
+	}
+}
+
+struct Posicao* IniciaTabuleiro (){
+	struct Posicao *tab = (struct Posicao*) malloc(sizeof(struct Posicao));
+	
+	for(int i = 0; i < 8; i++){
+        for(int j = 0; j < 8; j++){
+            tab->tabu[i][j] = NULL;
+        }
+    }
+	
+	tab->qtdBrancas=16;
+	tab->qtdPretas=16;
+	
+	struct Peca *inicioB= criaListaPecas();
+	struct Peca *inicioP= criaListaPecas();
+	
+	tab->brancas= inicioB;
+	tab->pretas= inicioP;
+
+	criaListaB(inicioB, tab->tabu);
+	criaListaP(inicioP, tab->tabu);
+	
+	tab->jogVez=1;
+	
+	return tab;
+}
+
+void ResetCor(){
+    SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x0E);
+}
+
+void AjustaCor(struct Peca* peca){
+    if(peca==NULL) SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x66);
+	else if(peca->codigo<0) SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x60);
+	else if(peca->codigo>0) SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x6F);
+}
+
+void MostrarTabuleiro (struct Posicao* tab){
+    Sleep(2000);
+	system("cls");
+
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x68);
+    printf("   +---+---+---+---+---+---+---+---+\n");
+    for (int i=7;i>=0;i--){
+    	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x67);
+        printf(" %d ",i+1);
+        SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x68);
+        printf("|");
+        for (int j=0;j<8;j++){
+			AjustaCor(tab->tabu[i][j]);
+            if(tab->tabu[i][j]==NULL)
+				printf("  ");
+			else if (tab->tabu[i][j]->codigo>0)
+                printf(" %d", tab->tabu[i][j]->codigo);
+            else printf("%d", tab->tabu[i][j]->codigo);
+            SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x68);
+            printf(" |");
+        }
+        printf("\n   +---+---+---+---+---+---+---+---+\n");
+    }
+    SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x67);
+    printf("     1   2   3   4   5   6   7   8  \n	");
+    if(tab->jogVez==1){
+    	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0xF0);
+    	printf("Turno das peças BRANCAS\n");
+	}
+	else{
+		SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x0F);
+    	printf("Turno das peças PRETAS\n");
+	}
+	ResetCor();
+	printf(" 1/-1:PEÃO  2/-2:CAVALO  3/-3:BISPO\n  4/-4:TORRE  5/-5:RAINHA  6/-6:REI\n\n");
+}
+
+int ChecarVencedor(struct Posicao* tab){
 	int flag=0;
-	for(int i=1;i<=8;i++){
-		for(int j=1; j<=8;j++){
-			if(*tab[i][j]==6)  flag+=6;
-			if(*tab[i][j]==-6) flag+=-6;
+	for(int i=0;i<8;i++){
+		for(int j=0; j<8;j++){
+			if(tab->tabu[i][j]!=NULL){
+				if(tab->tabu[i][j]->codigo==6)  flag+=6;
+				if(tab->tabu[i][j]->codigo==-6) flag+=-6;
+			}
 		}
 	}
 	return flag;
 }
 
-void MovimentoPossivel (int *peca[9][9], jogada * possi[30], int i, int j){
-	int c = 0;
-	int coluna = j;
-	for (int x = 0; x < 30; x++){
-		(*possi[x]).linhaDe = 0;
-		(*possi[x]).colunaDe = 0;
-		(*possi[x]).linhaPara = 0;
-		(*possi[x]).colunaPara = 0;
-	}
-
-	if (*peca[i][j] == 1){ 
-		if (i==2 && *peca[i + 2][j] == 0 && *peca[i + 1][j] == 0){ 
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i + 2;
-			(*possi[c]).colunaPara = j;
-			c++;
-		}
-		if (*peca[i + 1][j] == 0){	//peão branco
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i + 1;
-			(*possi[c]).colunaPara = j;
-			c++;
-		}
-	}//peão branco
-
-	if (*peca[i][j] == -1 ){
-		if (i == 7 && *peca[i - 2][j] == 0 && *peca[i - 1][j] == 0){  //peão preto inicial
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i - 2;
-			(*possi[c]).colunaPara = j;
-			c++;
-		}
-		if(*peca[i - 1][j] == 0){ //peão preto
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i - 1;
-			(*possi[c]).colunaPara = j;
-			c++;
-		}
-	}	//peão preto
-
-	if (*peca[i][j] == 1 && *peca[i + 1][j - 1] < 0){	
-		(*possi[c]).linhaDe = i;
-		(*possi[c]).colunaDe = j;
-		(*possi[c]).linhaPara = i + 1;
-		(*possi[c]).colunaPara = j - 1;
-		c++;
-	}//captura do peão branco
-	if (*peca[i][j] == 1 && *peca[i + 1][j + 1] < 0){
-		(*possi[c]).linhaDe = i;
-		(*possi[c]).colunaDe = j;
-		(*possi[c]).linhaPara = i + 1;
-		(*possi[c]).colunaPara = j + 1;
-		c++;
-	}
-
-	if (*peca[i][j] == -1 && *peca[i - 1][j - 1] > 0){	
-		(*possi[c]).linhaDe = i;
-		(*possi[c]).colunaDe = j;
-		(*possi[c]).linhaPara = i - 1;
-		(*possi[c]).colunaPara = j - 1;
-		c++;
-	} //captura do peão preto
-	if (*peca[i][j] == -1 && *peca[i - 1][j + 1] > 0){
-		(*possi[c]).linhaDe = i;
-		(*possi[c]).colunaDe = j;
-		(*possi[c]).linhaPara = i - 1;
-		(*possi[c]).colunaPara = j + 1;
-		c++;
-	}
-
-	if (*peca[i][j] == 2){	
-		if (i == 1 && j == 1){
-			if (*peca[i + 2][j+1] == 0 || *peca[i + 2][j+1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 2;	
-				(*possi[c]).colunaPara = j+1;
-				c++;
-			}
-			if (*peca[i + 1][j + 2] == 0 || *peca[i + 1][j + 2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 1 && j == 8){
-			if (*peca[i + 1][j+2] == 0 || *peca[i + 1][j+2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i + 2][j + 1] == 0 || *peca[i + 2][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 1){
-			if (*peca[i + 1][j+2] == 0 || *peca[i + 1][j+2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i + 2][j + 1] == 0 || *peca[i + 2][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i + 1][j - 2] == 0 || *peca[i + 1][j - 2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 2;
-				c++;
-			}
-			if (*peca[i+2][j - 1] == 0 || *peca[i+2][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i+2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 8 && j == 8){
-			if (*peca[i - 1][j-2] == 0 || *peca[i - 1][j-2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j-2;
-				c++;
-			}
-			if (*peca[i-2][j - 1] == 0 || *peca[i-2][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i-2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 8 && j == 1){
-			if (*peca[i - 1][j+2] == 0 || *peca[i - 1][j+2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i-2][j + 1] == 0 || *peca[i-2][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i-2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 8){
-			if (*peca[i - 1][j-2] == 0 || *peca[i - 1][j-2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j-2;
-				c++;
-			}
-			if (*peca[i - 1][j + 2] == 0 || *peca[i - 1][j + 2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j + 2;
-				c++;
-			}
-			if (*peca[i - 2][j - 1] == 0 || *peca[i - 2][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i-2][j + 1] == 0 || *peca[i-2][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i-2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i != 1 && i != 8 && j != 1 && j != 8){
-			if (*peca[i + 1][j+2] == 0 || *peca[i + 1][j+2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i + 2][j + 1] == 0 || *peca[i + 2][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i + 1][j - 2] == 0 || *peca[i + 1][j - 2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 2;
-				c++;
-			}
-			if (*peca[i-2][j + 1] == 0 || *peca[i-2][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i-2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i+2][j - 1] == 0 || *peca[i+2][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i+2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i - 1][j+2] == 0 || *peca[i - 1][j+2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i - 1][j - 2] == 0 || *peca[i - 1][j - 2] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j -2;
-				c++;
-			}
-			if (*peca[i - 2][j - 1] == 0 || *peca[i - 2][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-	} //cavalos branco
-	
-	if(*peca[i][j] == -2){
-		if (i == 1 && j == 1){
-			if (*peca[i + 2][j+1] == 0 || *peca[i + 2][j+1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 2;	
-				(*possi[c]).colunaPara = j+1;
-				c++;
-			}
-			if (*peca[i + 1][j + 2] == 0 || *peca[i + 1][j + 2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 1 && j == 8){
-			if (*peca[i + 1][j+2] == 0 || *peca[i + 1][j+2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i + 2][j + 1] == 0 || *peca[i + 2][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 1){
-			if (*peca[i + 1][j+2] == 0 || *peca[i + 1][j+2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i + 2][j + 1] == 0 || *peca[i + 2][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i + 1][j - 2] == 0 || *peca[i + 1][j - 2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 2;
-				c++;
-			}
-			if (*peca[i+2][j - 1] == 0 || *peca[i+2][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i+2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 8 && j == 8){
-			if (*peca[i - 1][j-2] == 0 || *peca[i - 1][j-2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j-2;
-				c++;
-			}
-			if (*peca[i-2][j - 1] == 0 || *peca[i-2][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i-2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 8 && j == 1){
-			if (*peca[i - 1][j+2] == 0 || *peca[i - 1][j+2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i-2][j + 1] == 0 || *peca[i-2][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i-2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 8){
-			if (*peca[i - 1][j-2] == 0 || *peca[i - 1][j-2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j-2;
-				c++;
-			}
-			if (*peca[i - 1][j + 2] == 0 || *peca[i - 1][j + 2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j + 2;
-				c++;
-			}
-			if (*peca[i - 2][j - 1] == 0 || *peca[i - 2][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i-2][j + 1] == 0 || *peca[i-2][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i-2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i != 1 && i != 8 && j != 1 && j != 8){
-			if (*peca[i + 1][j+2] == 0 || *peca[i + 1][j+2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i + 2][j + 1] == 0 || *peca[i + 2][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i + 1][j - 2] == 0 || *peca[i + 1][j - 2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 2;
-				c++;
-			}
-			if (*peca[i-2][j + 1] == 0 || *peca[i-2][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i-2;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i+2][j - 1] == 0 || *peca[i+2][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i+2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i - 1][j+2] == 0 || *peca[i - 1][j+2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j+2;
-				c++;
-			}
-			if (*peca[i - 1][j - 2] == 0 || *peca[i - 1][j - 2] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j -2;
-				c++;
-			}
-			if (*peca[i - 2][j - 1] == 0 || *peca[i - 2][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 2;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-	} //cavalo preto
-
-    if (*peca[i][j] == 3){		
-		for (int x = i; x > 1; x--){		
-			(*possi[x]).linhaDe = i;
-			(*possi[x]).colunaDe = j;
-			if (coluna < 8 && *peca[x - 1][coluna + 1] == 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-			}
-			else if (coluna < 8 && *peca[x - 1][coluna + 1] < 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-				break;
-			}
-			else if (coluna < 8 && *peca[x - 1][coluna + 1] > 0){
-				break;
-			}
-			coluna++;
-		}//bispo branco direita e cima
-		coluna = j;
-		for (int x = i; x < 8; x++){	
-			(*possi[x]).linhaDe = i;
-			(*possi[x]).colunaDe = j;
-			if (coluna < 8 && *peca[x + 1][coluna + 1] == 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-			}
-			else if (coluna < 8 && *peca[x + 1][coluna + 1] < 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-				break;
-			}
-			else if (coluna < 8 && *peca[x + 1][coluna + 1] > 0){
-				break;
-			}
-			coluna++;
-		}//bispo branco direita e baixo
-		coluna = j;
-		for (int x = i; x > 1; x--){	
-			if (coluna > 1 && *peca[x - 1][coluna - 1] == 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-			}
-			else if (coluna > 1 && *peca[x - 1][coluna - 1] < 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-				break;
-			}
-			else if (coluna > 1 && *peca[x - 1][coluna - 1] > 0){
-				break;
-			}
-			coluna--;
-		}//bispo branco esquerda e cima
-		coluna = j;
-		for (int x = i; x < 8; x++){			
-			if (coluna > 1 && *peca[x + 1][coluna - 1] == 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-			}
-			else if (coluna > 1 && *peca[x + 1][coluna - 1] < 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-				break;
-			}
-			else if (coluna > 1 && *peca[x + 1][coluna - 1] > 0){
-				break;
-			}
-			coluna--;
-		}//bispo branco esquerda e baixo
-	} //bispo branco
-	
-	if (*peca[i][j] == -3){		
-		for (int x = i; x > 1; x--){	
-			(*possi[x]).linhaDe = i;
-			(*possi[x]).colunaDe = j;
-			if (coluna < 8 && *peca[x - 1][coluna + 1] == 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-			}
-			else if (coluna < 8 && *peca[x - 1][coluna + 1] > 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-				break;
-			}
-			else if (coluna < 8 && *peca[x - 1][coluna + 1] < 0){
-				break;
-			}
-			coluna++;
-		}//bispo preto direita e cima
-		coluna = j;
-		for (int x = i; x < 8; x++){	
-			(*possi[x]).linhaDe = i;
-			(*possi[x]).colunaDe = j;
-			if (coluna < 8 && *peca[x + 1][coluna + 1] == 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-			}
-			else if (coluna < 8 && *peca[x + 1][coluna + 1] > 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-				break;
-			}
-			else if (coluna < 8 && *peca[x + 1][coluna + 1] < 0){
-				break;
-			}
-			coluna++;
-		}//bispo preto direita e baixo
-		coluna = j;
-		for (int x = i; x > 1; x--){	
-			if (coluna > 1 && *peca[x - 1][coluna - 1] == 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-			}
-			else if (coluna > 1 && *peca[x - 1][coluna - 1] > 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-				break;
-			}
-			else if (coluna > 1 && *peca[x - 1][coluna - 1] < 0){
-				break;
-			}
-			coluna--;
-		}//bispo preto esquerda e cima
-		coluna = j;
-		for (int x = i; x < 8; x++){	
-			if (coluna > 1 && *peca[x + 1][coluna - 1] == 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-			}
-			else if (coluna > 1 && *peca[x + 1][coluna - 1] > 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-				break;
-			}
-			else if (coluna > 1 && *peca[x + 1][coluna - 1] < 0){
-				break;
-			}
-			coluna--;
-		}//bispo preto esquerda e baixo
-	} //bispo preto
-
-	if (*peca[i][j] == 4){				
-        for (int x = i; x >= 1; x--){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).colunaPara = j;
-			if (*peca[x][j] == 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-			}
-			else if (*peca[x][j] < 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-				break;
-			}
-			if(*peca[x-1][j]>0)
-			    break;
-		}//torre branca pra cima
-		for (int x = i; x <= 8; x++){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).colunaPara = j;
-			if (*peca[x][j] == 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-			}
-			else if (*peca[x][j] < 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-				break;
-			}
-		    if(x<8){
-	            if(*peca[x+1][j]>0)
-		            break;
-			}
-		}//torre branca pra baixo
-		for (int x = j; x >= 1; x--){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i;
-			if (*peca[i][x] == 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-			}
-			else if (*peca[i][x] < 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-				break;
-			}
-		    if(x>1){
-		        if(*peca[i][x-1]>0)
-		            break;
-			}
-		}//torre branca pra esquerda
-		for (int x = j; x <= 8; x++){	
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i;
-			if (*peca[i][x] == 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-			}
-			else if (*peca[i][x] < 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-				break;
-			}
-		    if(x<8){
-		        if(*peca[i][x+1]>0)
-		            break;
-			}        
-		}//torre branca pra direita
-	}//torre branca
-	
-	if (*peca[i][j] == -4){ 				
- 		for (int x = i; x >= 1; x--){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).colunaPara = j;
-			if (*peca[x][j] == 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-			}
-			else if (*peca[x][j] > 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-				break;
-			}
-			if(x>1){
-			    if(*peca[x-1][j]<0)
-			        break;
-			}
-		}//torre preta pra cima
-		for (int x = i; x <= 8; x++){		
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).colunaPara = j;
-			if (*peca[x][j] == 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-			}
-			else if (*peca[x][j] > 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-				break;
-			}
-		    if(x<8){
-	            if(*peca[x+1][j]<0)
-		            break;
-			}
-		}//torre preta pra baixo
-		for (int x = j; x >= 1; x--){		
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i;
-			if (*peca[i][x] == 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-			}
-			else if (*peca[i][x] > 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-				break;
-			}
-		    if(x>1){
-		        if(*peca[i][x-1]<0)
-		            break;
-			}
-		}//torre pra esquerda
-		for (int x = j; x <= 8; x++){	
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i;
-			if (*peca[i][x] == 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-			}
-			else if (*peca[i][x] > 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-				break;
-			}
-		    if(x<8){
-		        if(*peca[i][x+1]<0)
-		            break;
-			}        
-		}//torre pra direita
-	} //torre preta
-
-	if (*peca[i][j] == 5){		
-		for (int x = i; x > 1; x--){		
-			(*possi[x]).linhaDe = i;
-			(*possi[x]).colunaDe = j;
-			if (coluna < 8 && *peca[x - 1][coluna + 1] == 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-			}
-			else if (coluna < 8 && *peca[x - 1][coluna + 1] < 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-				break;
-			}
-			else if (coluna < 8 && *peca[x - 1][coluna + 1] > 0){
-				break;
-			}
-			coluna++;
-		}//rainha branca direita e cima
-		coluna = j;
-		for (int x = i; x < 8; x++){	
-			(*possi[x]).linhaDe = i;
-			(*possi[x]).colunaDe = j;
-			if (coluna < 8 && *peca[x + 1][coluna + 1] == 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-			}
-			else if (coluna < 8 && *peca[x + 1][coluna + 1] < 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-				break;
-			}
-			else if (coluna < 8 && *peca[x + 1][coluna + 1] > 0){
-				break;
-			}
-			coluna++;
-		}//rainha branca direita e baixo
-		coluna = j;
-		for (int x = i; x > 1; x--){	
-			if (coluna > 1 && *peca[x - 1][coluna - 1] == 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-			}
-			else if (coluna > 1 && *peca[x - 1][coluna - 1] < 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-				break;
-			}
-			else if (coluna > 1 && *peca[x - 1][coluna - 1] > 0){
-				break;
-			}
-			coluna--;
-		}//rainha branca esquerda e cima
-		coluna = j;
-		for (int x = i; x < 8; x++){			
-			if (coluna > 1 && *peca[x + 1][coluna - 1] == 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-			}
-			else if (coluna > 1 && *peca[x + 1][coluna - 1] < 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-				break;
-			}
-			else if (coluna > 1 && *peca[x + 1][coluna - 1] > 0){
-				break;
-			}
-			coluna--;
-		}//rainha branca esquerda e baixo
-		
-        for (int x = i; x > 1; x--){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).colunaPara = j;
-			if (*peca[x][j] == 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-			}
-			else if (*peca[x][j] < 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-				break;
-			}
-			if(*peca[x-1][j]>0)
-			    break;
-		}//rainha branca pra cima
-		for (int x = i; x < 8; x++){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).colunaPara = j;
-			if (*peca[x][j] == 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-			}
-			else if (*peca[x][j] < 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-				break;
-			}
-		    if(x<8){
-	            if(*peca[x+1][j]>0)
-		            break;
-			}
-		}//rainha branca pra baixo
-		for (int x = j; x > 1; x--){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i;
-			if (*peca[i][x] == 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-			}
-			else if (*peca[i][x] < 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-				break;
-			}
-		    if(x>1){
-		        if(*peca[i][x-1]>0)
-		            break;
-			}
-		}//rainha branca pra esquerda
-		for (int x = j; x < 8; x++){	
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i;
-			if (*peca[i][x] == 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-			}
-			else if (*peca[i][x] < 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-				break;
-			}
-		    if(x<8){
-		        if(*peca[i][x+1]>0)
-		            break;
-			}        
-		}//rainha branca pra direita
-	} //rainha branca
-
-	if (*peca[i][j] == -5){		
-        for (int x = i; x > 1; x--){	
-			(*possi[x]).linhaDe = i;
-			(*possi[x]).colunaDe = j;
-			if (coluna < 8 && *peca[x - 1][coluna + 1] == 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-			}
-			else if (coluna < 8 && *peca[x - 1][coluna + 1] > 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-				break;
-			}
-			else if (coluna < 8 && *peca[x - 1][coluna + 1] < 0){
-				break;
-			}
-			coluna++;
-		}//rainha preta direita e cima
-		coluna = j;
-		for (int x = i; x < 8; x++){	
-			(*possi[x]).linhaDe = i;
-			(*possi[x]).colunaDe = j;
-			if (coluna < 8 && *peca[x + 1][coluna + 1] == 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-			}
-			else if (coluna < 8 && *peca[x + 1][coluna + 1] > 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna + 1;
-				c++;
-				break;
-			}
-			else if (coluna < 8 && *peca[x + 1][coluna + 1] < 0){
-				break;
-			}
-			coluna++;
-		}//rainha preta direita e baixo
-		coluna = j;
-		for (int x = i; x > 1; x--){	
-			if (coluna > 1 && *peca[x - 1][coluna - 1] == 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-			}
-			else if (coluna > 1 && *peca[x - 1][coluna - 1] > 0){
-				(*possi[c]).linhaPara = x - 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-				break;
-			}
-			else if (coluna > 1 && *peca[x - 1][coluna - 1] < 0){
-				break;
-			}
-			coluna--;
-		}//rainha preta esquerda e cima
-		coluna = j;
-		for (int x = i; x < 8; x++){	
-			if (coluna > 1 && *peca[x + 1][coluna - 1] == 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-			}
-			else if (coluna > 1 && *peca[x + 1][coluna - 1] > 0){
-				(*possi[c]).linhaPara = x + 1;
-				(*possi[c]).colunaPara = coluna - 1;
-				c++;
-				break;
-			}
-			else if (coluna > 1 && *peca[x + 1][coluna - 1] < 0){
-				break;
-			}
-			coluna--;
-		}//rainha preta esquerda e baixo
-		
-		for (int x = i; x > 1; x--){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).colunaPara = j;
-			if (*peca[x][j] == 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-			}
-			else if (*peca[x][j] > 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-				break;
-			}
-			if(x>1){
-			    if(*peca[x-1][j]<0)
-			        break;
-			}
-		}//rainha preta pra cima
-		for (int x = i; x < 8; x++){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).colunaPara = j;
-			if (*peca[x][j] == 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-			}
-			else if (*peca[x][j] > 0){
-				(*possi[c]).linhaPara = x;
-				c++;
-				break;
-			}
-		    if(x<8){
-	            if(*peca[x+1][j]<0)
-		            break;
-			}
-		}//rainha preta pra baixo
-		for (int x = j; x > 1; x--){			
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i;
-			if (*peca[i][x] == 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-			}
-			else if (*peca[i][x] > 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-				break;
-			}
-		    if(x>1){
-		        if(*peca[i][x-1]<0)
-		            break;
-			}
-		}//rainha preta esquerda
-		for (int x = j; x < 8; x++){	
-			(*possi[c]).linhaDe = i;
-			(*possi[c]).colunaDe = j;
-			(*possi[c]).linhaPara = i;
-			if (*peca[i][x] == 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-			}
-			else if (*peca[i][x] > 0){
-				(*possi[c]).colunaPara = x;
-				c++;
-				break;
-			}
-		    if(x<8){
-		        if(*peca[i][x+1]<0)
-		            break;
-			}        
-		}//rainha preta direita
-	} //rainha preta
-	
-	if (*peca[i][j] == 6){			
-		if (i == 1 && j == 1){
-			if (*peca[i + 1][j] == 0 || *peca[i + 1][j] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;	
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i + 1][j + 1] == 0 || *peca[i + 1][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 1 && j == 8){
-			if (*peca[i + 1][j] == 0 || *peca[i + 1][j] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i + 1][j - 1] == 0 || *peca[i + 1][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 1){
-			if (*peca[i + 1][j] == 0 || *peca[i + 1][j] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i + 1][j + 1] == 0 || *peca[i + 1][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i + 1][j - 1] == 0 || *peca[i + 1][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 8 && j == 8){
-			if (*peca[i - 1][j] == 0 || *peca[i - 1][j] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i - 1][j - 1] == 0 || *peca[i - 1][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 8 && j == 1){
-			if (*peca[i - 1][j] == 0 || *peca[i - 1][j] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i - 1][j - 1] == 0 || *peca[i - 1][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 8){
-			if (*peca[i - 1][j] == 0 || *peca[i - 1][j] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i - 1][j + 1] == 0 || *peca[i - 1][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i - 1][j - 1] == 0 || *peca[i - 1][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i != 1 && i != 8 && j != 1 && j != 8){
-			if (*peca[i + 1][j] == 0 || *peca[i + 1][j] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i + 1][j + 1] == 0 || *peca[i + 1][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i + 1][j - 1] == 0 || *peca[i + 1][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i - 1][j] == 0 || *peca[i - 1][j] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i - 1][j + 1] == 0 || *peca[i - 1][j + 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i - 1][j - 1] == 0 || *peca[i - 1][j - 1] < 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-	} //rei branco
-	
-	if (*peca[i][j] == -6){	
-		if (i == 1 && j == 1){
-			if (*peca[i + 1][j] == 0 || *peca[i + 1][j] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i + 1][j + 1] == 0 || *peca[i + 1][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 1 && j == 8){
-			if (*peca[i + 1][j] == 0 || *peca[i + 1][j] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i + 1][j - 1] == 0 || *peca[i + 1][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 1){
-			if (*peca[i + 1][j] == 0 || *peca[i + 1][j] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i + 1][j + 1] == 0 || *peca[i + 1][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i + 1][j - 1] == 0 || *peca[i + 1][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 8 && j == 8){
-			if (*peca[i - 1][j] == 0 || *peca[i - 1][j] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i - 1][j - 1] == 0 || *peca[i - 1][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i == 8 && j == 1){
-			if (*peca[i - 1][j] == 0 || *peca[i - 1][j] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i - 1][j - 1] == 0 || *peca[i - 1][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-		}
-		if (i == 8){
-			if (*peca[i - 1][j] == 0 || *peca[i - 1][j] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i - 1][j + 1] == 0 || *peca[i - 1][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i - 1][j - 1] == 0 || *peca[i - 1][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-		if (i != 1 && i != 8 && j != 1 && j != 8){
-			if (*peca[i + 1][j] == 0 || *peca[i + 1][j] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i + 1][j + 1] == 0 || *peca[i + 1][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i + 1][j - 1] == 0 || *peca[i + 1][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i + 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i][j + 1] == 0 || *peca[i][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i][j - 1] == 0 || *peca[i][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-			if (*peca[i - 1][j] == 0 || *peca[i - 1][j] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j;
-				c++;
-			}
-			if (*peca[i - 1][j + 1] == 0 || *peca[i - 1][j + 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j + 1;
-				c++;
-			}
-			if (*peca[i - 1][j - 1] == 0 || *peca[i - 1][j - 1] > 0){
-				(*possi[c]).linhaDe = i;
-				(*possi[c]).colunaDe = j;
-				(*possi[c]).linhaPara = i - 1;
-				(*possi[c]).colunaPara = j - 1;
-				c++;
-			}
-		}
-	} //rei preto
+struct Jogada* CriaJogada(int LDe, int LPara, int CDe, int CPara){
+  struct Jogada *resp= (struct Jogada*) malloc(sizeof(struct Jogada));
+  	resp->linhaDe= LDe;
+  	resp->linhaPara= LPara;
+  	resp->colunaDe= CDe;
+  	resp->colunaPara= CPara;
+  	resp->prox= NULL;
+  	resp->ant= NULL;
+  	return resp;
 }
 
-void EscolherMovimento (int *tab[9][9], jogada * possiveis[30], int i, int j, int item){
-  int peca = *tab[i][j];
-  *tab[i][j] = 0;
-  *tab[(*possiveis[item]).linhaPara][(*possiveis[item]).colunaPara] = peca;
+void InsereJogada(struct Jogada* listaJ, int LDe, int CDe, int LPara, int CPara){
+  	struct Jogada *novo = CriaJogada(LDe, LPara, CDe, CPara);
+  	novo->prox= listaJ;
+  	novo->ant= listaJ->ant;
+  	listaJ->ant->prox= novo;
+	listaJ->ant= novo;
+}
 
+struct Jogada* CalculaMovimentosPossiveis(struct Posicao* posAtual, int i, int j){
+	struct Jogada *listaJ= criaListaJ();
+	int coluna = j;
+	struct Peca *aux=posAtual->brancas->prox;
+	while(aux!=posAtual->brancas){
+		aux->ataques=0;
+		aux=aux->prox;
+	}
+	aux=posAtual->pretas->prox;
+	while(aux!=posAtual->pretas){
+		aux->ataques=0;
+		aux=aux->prox;
+	}
+
+	if (posAtual->tabu[i][j]->codigo == 1){ //peão branco
+		if (i==1 && posAtual->tabu[i+2][j] == NULL && posAtual->tabu[i + 1][j] == NULL){ 
+			InsereJogada(listaJ, i, j, i+2, j);
+		}
+		if (posAtual->tabu[i + 1][j] == NULL){
+			InsereJogada(listaJ, i, j, i+1, j);
+		}
+	}
+	
+	if (posAtual->tabu[i][j]->codigo == -1 ){ //peão preto
+		if (i == 6 && posAtual->tabu[i - 2][j] == NULL && posAtual->tabu[i - 1][j] == NULL){  //peão preto inicial
+			InsereJogada(listaJ, i, j, i-2, j);
+		}
+		if(posAtual->tabu[i - 1][j] == NULL){ //peão preto
+			InsereJogada(listaJ, i, j, i-1, j);
+		}
+	}
+	
+	if (posAtual->tabu[i][j]->codigo == 1 && j!=0 && posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo < 0){	//captura do peão branco
+		InsereJogada(listaJ, i, j, i+1, j-1);
+      	posAtual->tabu[i + 1][j - 1]->ataques++;
+	} 
+	if (posAtual->tabu[i][j]->codigo == 1 && j!=7 && posAtual->tabu[i + 1][j + 1]!= NULL && posAtual->tabu[i + 1][j + 1]->codigo < 0){
+		InsereJogada(listaJ, i, j, i+1, j+1);
+      	posAtual->tabu[i + 1][j + 1]->ataques++;
+	}
+	
+	if (posAtual->tabu[i][j]->codigo == -1 && j!=0 && posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo > 0){	//captura do peão preto
+		InsereJogada(listaJ, i, j, i-1, j-1);
+      	posAtual->tabu[i - 1][j - 1]->ataques++;
+	} 
+	if (posAtual->tabu[i][j]->codigo == -1 && j!=7 && posAtual->tabu[i - 1][j + 1]!= NULL && posAtual->tabu[i - 1][j + 1]->codigo > 0){
+		InsereJogada(listaJ, i, j, i-1, j+1);
+        posAtual->tabu[i - 1][j + 1]->ataques++;
+	}
+
+
+	if (posAtual->tabu[i][j]->codigo == 2){	//cavalos brancos
+		if (i == 0 && j == 0){
+			if (posAtual->tabu[i + 2][j+1]== NULL || posAtual->tabu[i + 2][j+1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j+1]!= NULL&&posAtual->tabu[i + 2][j+1]->codigo < 0)
+					posAtual->tabu[i + 2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 2]== NULL || posAtual->tabu[i + 1][j + 2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j + 2]!= NULL&&posAtual->tabu[i + 1][j+2]->codigo < 0)
+					posAtual->tabu[i + 1][j+2]->ataques++;
+			}
+		}
+		if (i == 0 && j == 7){
+			if (posAtual->tabu[i + 1][j+2]== NULL || posAtual->tabu[i + 1][j+2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j+2]!= NULL &&posAtual->tabu[i + 1][j+2]->codigo < 0)
+					posAtual->tabu[i + 1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i + 2][j + 1]== NULL || posAtual->tabu[i + 2][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j + 1]!= NULL&&posAtual->tabu[i + 2][j+1]->codigo < 0)
+					posAtual->tabu[i + 2][j+1]->ataques++;
+			}
+		}
+		if (i == 0){
+			if (posAtual->tabu[i + 1][j+2]== NULL || posAtual->tabu[i + 1][j+2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j+2]!= NULL &&posAtual->tabu[i + 1][j+2]->codigo < 0)
+					posAtual->tabu[i + 1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i + 2][j + 1]== NULL || posAtual->tabu[i + 2][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j + 1]!= NULL&&posAtual->tabu[i + 2][j+1]->codigo < 0)
+					posAtual->tabu[i + 2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 2]== NULL || posAtual->tabu[i + 1][j - 2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j-2);
+				if(posAtual->tabu[i + 1][j - 2]!= NULL&&posAtual->tabu[i + 1][j-2]->codigo < 0)
+					posAtual->tabu[i + 1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i+2][j - 1]== NULL || posAtual->tabu[i+2][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+2, j-1);
+				if(posAtual->tabu[i+2][j - 1]!= NULL &&posAtual->tabu[i + 2][j-1]->codigo < 0)
+					posAtual->tabu[i + 2][j-1]->ataques++;
+			}
+		}
+		if (i == 7 && j == 7){
+			if (posAtual->tabu[i - 1][j-2]== NULL || posAtual->tabu[i - 1][j-2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-2);
+				if(posAtual->tabu[i - 1][j-2]!= NULL&&posAtual->tabu[i-1][j-2]->codigo < 0)
+					posAtual->tabu[i-1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j - 1]== NULL || posAtual->tabu[i-2][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-2, j-1);
+				if(posAtual->tabu[i-2][j - 1]!= NULL&&posAtual->tabu[i - 2][j-1]->codigo < 0)
+					posAtual->tabu[i - 2][j-1]->ataques++;
+			}
+		}
+		if (i == 7 && j == 0){
+			if (posAtual->tabu[i - 1][j+2]== NULL || posAtual->tabu[i - 1][j+2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j+2);
+				if(posAtual->tabu[i - 1][j+2]!= NULL&&posAtual->tabu[i -1][j+2]->codigo < 0)
+					posAtual->tabu[i -1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j + 1]== NULL || posAtual->tabu[i-2][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-2, j+1);
+				if(posAtual->tabu[i-2][j + 1]!= NULL&&posAtual->tabu[i - 2][j+1]->codigo < 0)
+					posAtual->tabu[i - 2][j-1]->ataques++;
+			}
+		}
+		if (i == 7){
+			if (posAtual->tabu[i - 1][j-2]== NULL || posAtual->tabu[i - 1][j-2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-2);
+				if(posAtual->tabu[i - 1][j-2]!= NULL&&posAtual->tabu[i-1][j-2]->codigo < 0)
+					posAtual->tabu[i-1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j + 2]== NULL || posAtual->tabu[i - 1][j + 2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j+2);
+				if(posAtual->tabu[i - 1][j + 2]!= NULL&&posAtual->tabu[i-1][j+2]->codigo < 0)
+					posAtual->tabu[i-1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i - 2][j - 1]== NULL || posAtual->tabu[i - 2][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-2, j-1);
+				if(posAtual->tabu[i - 2][j - 1]!= NULL&&posAtual->tabu[i-2][j-1]->codigo < 0)
+					posAtual->tabu[i-2][j-1]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j + 1]== NULL || posAtual->tabu[i-2][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-2, j+1);
+				if(posAtual->tabu[i-2][j + 1]!= NULL&&posAtual->tabu[i-2][j+1]->codigo < 0)
+					posAtual->tabu[i-2][j+1]->ataques++;
+			}
+		}
+		if(j==0){
+			if (posAtual->tabu[i + 1][j+2]== NULL || posAtual->tabu[i + 1][j+2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j+2]!= NULL&&posAtual->tabu[i+1][j+2]->codigo < 0)
+					posAtual->tabu[i+1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i + 2][j + 1]== NULL || posAtual->tabu[i + 2][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j + 1]!= NULL&&posAtual->tabu[i+2][j+1]->codigo < 0)
+					posAtual->tabu[i+2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j + 1]== NULL || posAtual->tabu[i-2][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-2, j+1);
+				if(posAtual->tabu[i-2][j + 1]!= NULL&&posAtual->tabu[i-2][j+1]->codigo < 0)
+					posAtual->tabu[i-2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j+2]== NULL || posAtual->tabu[i - 1][j+2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j+2);
+				if(posAtual->tabu[i - 1][j+2]!= NULL&&posAtual->tabu[i-1][j+2]->codigo < 0)
+					posAtual->tabu[i-1][j+2]->ataques++;
+			}
+		}
+		if(j==7){
+			if (posAtual->tabu[i + 1][j - 2]== NULL || posAtual->tabu[i + 1][j - 2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j-2);
+				if(posAtual->tabu[i + 1][j - 2]!= NULL&&posAtual->tabu[i+1][j-2]->codigo < 0)
+					posAtual->tabu[i+1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i+2][j - 1]== NULL || posAtual->tabu[i+2][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+2, j-1);
+				if(posAtual->tabu[i+2][j - 1]!= NULL&&posAtual->tabu[i+2][j-1]->codigo < 0)
+					posAtual->tabu[i+2][j-1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 2]== NULL || posAtual->tabu[i - 1][j - 2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-2);
+				if(posAtual->tabu[i - 1][j - 2]!= NULL&&posAtual->tabu[i-1][j-2]->codigo < 0)
+					posAtual->tabu[i-1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i - 2][j - 1]== NULL || posAtual->tabu[i - 2][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-2, j-1);
+				if(posAtual->tabu[i - 2][j - 1]!= NULL&&posAtual->tabu[i-2][j-1]->codigo < 0)
+					posAtual->tabu[i-2][j-1]->ataques++;
+			}
+		}
+		if (i != 0 && i != 7 && j != 0 && j != 7){
+			if (posAtual->tabu[i + 1][j+2]== NULL || posAtual->tabu[i + 1][j+2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j+2]!= NULL&&posAtual->tabu[i+1][j+2]->codigo < 0)
+					posAtual->tabu[i+1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i + 2][j + 1]== NULL || posAtual->tabu[i + 2][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j + 1]!= NULL&&posAtual->tabu[i+2][j+1]->codigo < 0)
+					posAtual->tabu[i+2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 2]== NULL || posAtual->tabu[i + 1][j - 2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j-2);
+				if(posAtual->tabu[i + 1][j - 2]!= NULL&&posAtual->tabu[i+1][j-2]->codigo < 0)
+					posAtual->tabu[i+1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j + 1]== NULL || posAtual->tabu[i-2][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-2, j+1);
+				if(posAtual->tabu[i-2][j + 1]!= NULL&&posAtual->tabu[i-2][j+1]->codigo < 0)
+					posAtual->tabu[i-2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i+2][j - 1]== NULL || posAtual->tabu[i+2][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+2, j-1);
+				if(posAtual->tabu[i+2][j - 1]!= NULL&&posAtual->tabu[i+2][j-1]->codigo < 0)
+					posAtual->tabu[i+2][j-1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j+2]== NULL || posAtual->tabu[i - 1][j+2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j+2);
+				if(posAtual->tabu[i - 1][j+2]!= NULL&&posAtual->tabu[i-1][j+2]->codigo < 0)
+					posAtual->tabu[i-1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 2]== NULL || posAtual->tabu[i - 1][j - 2]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-2);
+				if(posAtual->tabu[i - 1][j - 2]!= NULL&&posAtual->tabu[i-1][j-2]->codigo < 0)
+					posAtual->tabu[i-1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i - 2][j - 1]== NULL || posAtual->tabu[i - 2][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-2, j-1);
+				if(posAtual->tabu[i - 2][j - 1]!= NULL&&posAtual->tabu[i-2][j-1]->codigo < 0)
+					posAtual->tabu[i-2][j-1]->ataques++;
+			}
+		}
+	} 
+	
+	if (posAtual->tabu[i][j]->codigo == -2){	//cavalos pretos
+		if (i == 0 && j == 0){
+			if (posAtual->tabu[i + 2][j+1]== NULL || posAtual->tabu[i + 2][j+1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j+1]!= NULL&&posAtual->tabu[i + 2][j+1]->codigo > 0)
+					posAtual->tabu[i + 2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 2]== NULL || posAtual->tabu[i + 1][j + 2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j + 2]!= NULL&&posAtual->tabu[i + 1][j+2]->codigo > 0)
+					posAtual->tabu[i + 1][j+2]->ataques++;
+			}
+		}
+		if (i == 0 && j == 7){
+			if (posAtual->tabu[i + 1][j+2]== NULL || posAtual->tabu[i + 1][j+2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j+2]!= NULL &&posAtual->tabu[i + 1][j+2]->codigo > 0)
+					posAtual->tabu[i + 1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i + 2][j + 1]== NULL || posAtual->tabu[i + 2][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j + 1]!= NULL&&posAtual->tabu[i + 2][j+1]->codigo > 0)
+					posAtual->tabu[i + 2][j+1]->ataques++;
+			}
+		}
+		if (i == 0){
+			if (posAtual->tabu[i + 1][j+2]== NULL || posAtual->tabu[i + 1][j+2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j+2]!= NULL &&posAtual->tabu[i + 1][j+2]->codigo > 0)
+					posAtual->tabu[i + 1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i + 2][j + 1]== NULL || posAtual->tabu[i + 2][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j + 1]!= NULL&&posAtual->tabu[i + 2][j+1]->codigo > 0)
+					posAtual->tabu[i + 2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 2]== NULL || posAtual->tabu[i + 1][j - 2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j-2);
+				if(posAtual->tabu[i + 1][j - 2]!= NULL&&posAtual->tabu[i + 1][j-2]->codigo > 0)
+					posAtual->tabu[i + 1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i+2][j - 1]== NULL || posAtual->tabu[i+2][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+2, j-1);
+				if(posAtual->tabu[i+2][j - 1]!= NULL &&posAtual->tabu[i + 2][j-1]->codigo > 0)
+					posAtual->tabu[i + 2][j-1]->ataques++;
+			}
+		}
+		if (i == 7 && j == 7){
+			if (posAtual->tabu[i - 1][j-2]== NULL || posAtual->tabu[i - 1][j-2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-2);
+				if(posAtual->tabu[i - 1][j-2]!= NULL&&posAtual->tabu[i-1][j-2]->codigo > 0)
+					posAtual->tabu[i-1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j - 1]== NULL || posAtual->tabu[i-2][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-2, j-1);
+				if(posAtual->tabu[i-2][j - 1]!= NULL&&posAtual->tabu[i - 2][j-1]->codigo > 0)
+					posAtual->tabu[i - 2][j-1]->ataques++;
+			}
+		}
+		if (i == 7 && j == 0){
+			if (posAtual->tabu[i - 1][j+2]== NULL || posAtual->tabu[i - 1][j+2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j+2);
+				if(posAtual->tabu[i - 1][j+2]!= NULL&&posAtual->tabu[i -1][j+2]->codigo > 0)
+					posAtual->tabu[i -1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j + 1]== NULL || posAtual->tabu[i-2][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-2, j+1);
+				if(posAtual->tabu[i-2][j + 1]!= NULL&&posAtual->tabu[i - 2][j+1]->codigo > 0)
+					posAtual->tabu[i - 2][j-1]->ataques++;
+			}
+		}
+		if (i == 7){
+			if (posAtual->tabu[i - 1][j-2]== NULL || posAtual->tabu[i - 1][j-2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-2);
+				if(posAtual->tabu[i - 1][j-2]!= NULL&&posAtual->tabu[i-1][j-2]->codigo > 0)
+					posAtual->tabu[i-1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j + 2]== NULL || posAtual->tabu[i - 1][j + 2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j+2);
+				if(posAtual->tabu[i - 1][j + 2]!= NULL&&posAtual->tabu[i-1][j+2]->codigo > 0)
+					posAtual->tabu[i-1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i - 2][j - 1]== NULL || posAtual->tabu[i - 2][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-2, j-1);
+				if(posAtual->tabu[i - 2][j - 1]!= NULL&&posAtual->tabu[i-2][j-1]->codigo > 0)
+					posAtual->tabu[i-2][j-1]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j + 1]== NULL || posAtual->tabu[i-2][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-2, j+1);
+				if(posAtual->tabu[i-2][j + 1]!= NULL&&posAtual->tabu[i-2][j+1]->codigo > 0)
+					posAtual->tabu[i-2][j+1]->ataques++;
+			}
+		}
+		if(j==0){
+			if (posAtual->tabu[i + 1][j+2]== NULL || posAtual->tabu[i + 1][j+2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j+2]!= NULL&&posAtual->tabu[i+1][j+2]->codigo > 0)
+					posAtual->tabu[i+1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i + 2][j + 1]== NULL || posAtual->tabu[i + 2][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j + 1]!= NULL&&posAtual->tabu[i+2][j+1]->codigo > 0)
+					posAtual->tabu[i+2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j + 1]== NULL || posAtual->tabu[i-2][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-2, j+1);
+				if(posAtual->tabu[i-2][j + 1]!= NULL&&posAtual->tabu[i-2][j+1]->codigo > 0)
+					posAtual->tabu[i-2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j+2]== NULL || posAtual->tabu[i - 1][j+2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j+2);
+				if(posAtual->tabu[i - 1][j+2]!= NULL&&posAtual->tabu[i-1][j+2]->codigo > 0)
+					posAtual->tabu[i-1][j+2]->ataques++;
+			}
+		}
+		if(j==7){
+			if (posAtual->tabu[i + 1][j - 2]== NULL || posAtual->tabu[i + 1][j - 2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j-2);
+				if(posAtual->tabu[i + 1][j - 2]!= NULL&&posAtual->tabu[i+1][j-2]->codigo > 0)
+					posAtual->tabu[i+1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i+2][j - 1]== NULL || posAtual->tabu[i+2][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+2, j-1);
+				if(posAtual->tabu[i+2][j - 1]!= NULL&&posAtual->tabu[i+2][j-1]->codigo > 0)
+					posAtual->tabu[i+2][j-1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 2]== NULL || posAtual->tabu[i - 1][j - 2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-2);
+				if(posAtual->tabu[i - 1][j - 2]!= NULL&&posAtual->tabu[i-1][j-2]->codigo > 0)
+					posAtual->tabu[i-1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i - 2][j - 1]== NULL || posAtual->tabu[i - 2][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-2, j-1);
+				if(posAtual->tabu[i - 2][j - 1]!= NULL&&posAtual->tabu[i-2][j-1]->codigo > 0)
+					posAtual->tabu[i-2][j-1]->ataques++;
+			}
+		}
+		if (i != 0 && i != 7 && j != 0 && j != 7){
+			if (posAtual->tabu[i + 1][j+2]== NULL || posAtual->tabu[i + 1][j+2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+2);
+				if(posAtual->tabu[i + 1][j+2]!= NULL&&posAtual->tabu[i+1][j+2]->codigo > 0)
+					posAtual->tabu[i+1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i + 2][j + 1]== NULL || posAtual->tabu[i + 2][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+2, j+1);
+				if(posAtual->tabu[i + 2][j + 1]!= NULL&&posAtual->tabu[i+2][j+1]->codigo > 0)
+					posAtual->tabu[i+2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 2]== NULL || posAtual->tabu[i + 1][j - 2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j-2);
+				if(posAtual->tabu[i + 1][j - 2]!= NULL&&posAtual->tabu[i+1][j-2]->codigo > 0)
+					posAtual->tabu[i+1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i-2][j + 1]== NULL || posAtual->tabu[i-2][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-2, j+1);
+				if(posAtual->tabu[i-2][j + 1]!= NULL&&posAtual->tabu[i-2][j+1]->codigo > 0)
+					posAtual->tabu[i-2][j+1]->ataques++;
+			}
+			if (posAtual->tabu[i+2][j - 1]== NULL || posAtual->tabu[i+2][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+2, j-1);
+				if(posAtual->tabu[i+2][j - 1]!= NULL&&posAtual->tabu[i+2][j-1]->codigo > 0)
+					posAtual->tabu[i+2][j-1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j+2]== NULL || posAtual->tabu[i - 1][j+2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j+2);
+				if(posAtual->tabu[i - 1][j+2]!= NULL&&posAtual->tabu[i-1][j+2]->codigo > 0)
+					posAtual->tabu[i-1][j+2]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 2]== NULL || posAtual->tabu[i - 1][j - 2]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-2);
+				if(posAtual->tabu[i - 1][j - 2]!= NULL&&posAtual->tabu[i-1][j-2]->codigo > 0)
+					posAtual->tabu[i-1][j-2]->ataques++;
+			}
+			if (posAtual->tabu[i - 2][j - 1]== NULL || posAtual->tabu[i - 2][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-2, j-1);
+				if(posAtual->tabu[i - 2][j - 1]!= NULL&&posAtual->tabu[i-2][j-1]->codigo > 0)
+					posAtual->tabu[i-2][j-1]->ataques++;
+			}
+		}
+	}  
+
+    if (posAtual->tabu[i][j]->codigo == 3){ //bispo branco		
+		for (int x = i; x > 0; x--){ //bispo branco direita e cima		
+			if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]== NULL){
+				InsereJogada(listaJ, i, j, x-1, coluna+1);
+			}
+			else if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, x-1, coluna+1);
+				posAtual->tabu[x - 1][coluna + 1]->ataques++;
+				break;
+			}
+			else if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]->codigo > 0){
+				break;
+			}
+			coluna++;
+		}
+		coluna = j;
+		for (int x = i; x < 7; x++){ //bispo branco direita e baixo	
+			if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]== NULL){
+				InsereJogada(listaJ, i, j, x+1, coluna+1);
+			}
+			else if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, x+1, coluna+1);
+				posAtual->tabu[x + 1][coluna + 1]->ataques++;
+				break;
+			}
+			else if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]->codigo > 0){
+				break;
+			}
+			coluna++;
+		}
+		coluna = j;
+		for (int x = i; x > 0; x--){ //bispo branco esquerda e cima	
+			if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]== NULL){
+				InsereJogada(listaJ, i, j, x-1, coluna-1);
+			}
+			else if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, x-1, coluna-1);
+				posAtual->tabu[x - 1][coluna - 1]->ataques++;
+				break;
+			}
+			else if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]->codigo > 0){
+				break;
+			}
+			coluna--;
+		}
+		coluna = j;
+		for (int x = i; x < 7; x++){ //bispo branco esquerda e baixo			
+			if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]== NULL){
+				InsereJogada(listaJ, i, j, x+1, coluna-1);
+			}
+			else if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, x+1, coluna-1);
+				posAtual->tabu[x + 1][coluna - 1]->ataques++;
+				break;
+			}
+			else if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]->codigo > 0){
+				break;
+			}
+			coluna--;
+		}
+	}
+	
+	if (posAtual->tabu[i][j]->codigo == -3){ //bispo preto		
+		for (int x = i; x > 0; x--){ //bispo preto direita e cima		
+			if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]== NULL){
+				InsereJogada(listaJ, i, j, x-1, coluna+1);
+			}
+			else if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, x-1, coluna+1);
+				posAtual->tabu[x - 1][coluna + 1]->ataques++;
+				break;
+			}
+			else if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]->codigo < 0){
+				break;
+			}
+			coluna++;
+		}
+		coluna = j;
+		for (int x = i; x < 7; x++){ //bispo preto direita e baixo	
+			if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]== NULL){
+				InsereJogada(listaJ, i, j, x+1, coluna+1);
+			}
+			else if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, x+1, coluna+1);
+				posAtual->tabu[x + 1][coluna + 1]->ataques++;
+				break;
+			}
+			else if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]->codigo < 0){
+				break;
+			}
+			coluna++;
+		}
+		coluna = j;
+		for (int x = i; x > 0; x--){ //bispo preto esquerda e cima	
+			if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]== NULL){
+				InsereJogada(listaJ, i, j, x-1, coluna-1);
+			}
+			else if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, x-1, coluna-1);
+				posAtual->tabu[x - 1][coluna - 1]->ataques++;
+				break;
+			}
+			else if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]->codigo < 0){
+				break;
+			}
+			coluna--;
+		}
+		coluna = j;
+		for (int x = i; x < 7; x++){ //bispo preto esquerda e baixo			
+			if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]== NULL){
+				InsereJogada(listaJ, i, j, x+1, coluna-1);
+			}
+			else if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, x+1, coluna-1);
+				posAtual->tabu[x + 1][coluna - 1]->ataques++;
+				break;
+			}
+			else if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]->codigo < 0){
+				break;
+			}
+			coluna--;
+		}
+	} 
+
+	if (posAtual->tabu[i][j]->codigo == 4){	//torre branca
+		for (int x = i; x >= 0; x--){	//torre branca pra baixo
+		
+			if (posAtual->tabu[x][j] == NULL){
+				InsereJogada(listaJ, i, j, x, j);
+			}
+			else{
+				if (posAtual->tabu[x][j]->codigo<0){
+					InsereJogada(listaJ, i, j, x, j);
+					posAtual->tabu[x][j]->ataques++;
+					break;
+				}		
+		        	if(x!=i && posAtual->tabu[x][j]!= NULL && posAtual->tabu[x][j]->codigo>0)
+						break;
+			}
+		}
+
+		for (int x = i; x <= 7; x++){	//torre branca pra cima
+			if (posAtual->tabu[x][j] == NULL){
+				InsereJogada(listaJ, i, j, x, j);
+			}
+			else{
+				if (posAtual->tabu[x][j]->codigo < 0){
+					InsereJogada(listaJ, i, j, x, j);
+					posAtual->tabu[x][j]->ataques++;
+					break;
+				}
+					if(x!=i && posAtual->tabu[x][j]!=NULL && posAtual->tabu[x][j]->codigo > 0)
+						break;
+			}
+		}
+	
+		for (int x = j; x >= 0; x--){	//torre branca pra esquerda
+			if (posAtual->tabu[i][x] == NULL){
+				InsereJogada(listaJ, i, j, i, x);
+			}
+			else{
+				if (posAtual->tabu[i][x]->codigo < 0){
+					InsereJogada(listaJ, i, j, i, x);
+					posAtual->tabu[i][x]->ataques++;
+					break;
+				}
+		        	if(x!=j && posAtual->tabu[i][x]!=NULL && posAtual->tabu[i][x]->codigo>0)
+						break;
+			}
+		}
+		
+		for (int x = j; x <= 7; x++){	//torre branca pra direita
+			
+			if (posAtual->tabu[i][x] == NULL){
+				InsereJogada(listaJ, i, j, i, x);
+			}
+			else{
+				if (posAtual->tabu[i][x]->codigo < 0){
+					InsereJogada(listaJ, i, j, i, x);
+					posAtual->tabu[i][x]->ataques++;
+					break;
+				}
+		        if(x!=j && posAtual->tabu[i][x]!=NULL && posAtual->tabu[i][x]->codigo>0)
+					break;      
+			}
+		}
+	}
+	
+	if (posAtual->tabu[i][j]->codigo == -4){ //torre preta				
+ 		for (int x = i; x >= 0; x--){	//torre preta pra baixo
+		
+			if (posAtual->tabu[x][j] == NULL){
+				InsereJogada(listaJ, i, j, x, j);
+			}
+			else{
+				if (posAtual->tabu[x][j]->codigo>0){
+					InsereJogada(listaJ, i, j, x, j);
+					posAtual->tabu[x][j]->ataques++;
+					break;
+				}		
+		       	if(x!=i && posAtual->tabu[x][j]!= NULL && posAtual->tabu[x][j]->codigo<0)
+					break;
+			}
+		}
+
+		for (int x = i; x <= 7; x++){	//torre preta pra cima
+			if (posAtual->tabu[x][j] == NULL){
+				InsereJogada(listaJ, i, j, x, j);
+			}
+			else{
+				if (posAtual->tabu[x][j]->codigo > 0){
+					InsereJogada(listaJ, i, j, x, j);
+					posAtual->tabu[x][j]->ataques++;
+					break;
+				}
+					if(x!=i && posAtual->tabu[x][j]!=NULL && posAtual->tabu[x][j]->codigo < 0){
+						break;}
+			}
+		}
+	
+		for (int x = j; x >= 0; x--){	//torre preta pra esquerda
+			if (posAtual->tabu[i][x] == NULL){
+				InsereJogada(listaJ, i, j, i, x);
+			}
+			else{
+				if (posAtual->tabu[i][x]->codigo > 0){
+					InsereJogada(listaJ, i, j, i, x);
+					posAtual->tabu[i][x]->ataques++;
+					break;
+				}
+		        	if(x!=j && posAtual->tabu[i][x]!=NULL && posAtual->tabu[i][x]->codigo<0)
+						break;
+			}
+		}
+		
+		for (int x = j; x <= 7; x++){	//torre preta pra direita
+			if (posAtual->tabu[i][x] == NULL){
+				InsereJogada(listaJ, i, j, i, x);
+			}
+			else{
+				if (posAtual->tabu[i][x]->codigo > 0){
+					InsereJogada(listaJ, i, j, i, x);
+					posAtual->tabu[i][x]->ataques++;
+					break;
+				}
+		        if(x!=j && posAtual->tabu[i][x]!=NULL && posAtual->tabu[i][x]->codigo<0)
+					break;      
+			}
+		}
+	} 
+
+	if (posAtual->tabu[i][j]->codigo == 5){ //rainha branca
+		for (int x = i; x >= 0; x--){	//rainha branca pra baixo
+		
+			if (posAtual->tabu[x][j] == NULL){
+				InsereJogada(listaJ, i, j, x, j);
+			}
+			else{
+				if (posAtual->tabu[x][j]->codigo<0){
+					InsereJogada(listaJ, i, j, x, j);
+					posAtual->tabu[x][j]->ataques++;
+					break;
+				}		
+				if(x>0){
+		        	if(x!=i && posAtual->tabu[x][j]!= NULL && posAtual->tabu[x][j]->codigo>0){
+						break;
+		        	}
+				}
+			}
+		}
+
+		for (int x = i; x <= 7; x++){	//rainha branca pra cima
+			if (posAtual->tabu[x][j] == NULL){
+				InsereJogada(listaJ, i, j, x, j);
+			}
+			else{
+				if (posAtual->tabu[x][j]->codigo < 0){
+					InsereJogada(listaJ, i, j, x, j);
+					posAtual->tabu[x][j]->ataques++;
+					break;
+				}
+					if(x!=i && posAtual->tabu[x][j]!=NULL && posAtual->tabu[x][j]->codigo > 0)
+						break;
+			}
+		}
+	
+		for (int x = j; x >= 0; x--){	//rainha branca pra esquerda
+			if (posAtual->tabu[i][x] == NULL){
+				InsereJogada(listaJ, i, j, i, x);
+			}
+			else{
+				if (posAtual->tabu[i][x]->codigo < 0){
+					InsereJogada(listaJ, i, j, i, x);
+					posAtual->tabu[i][x]->ataques++;
+					break;
+				}
+		        	if(x!=j && posAtual->tabu[i][x]!=NULL && posAtual->tabu[i][x]->codigo>0)
+						break;
+			}
+		}
+		
+		for (int x = j; x <= 7; x++){	//rainha branca pra direita
+			
+			if (posAtual->tabu[i][x] == NULL){
+				InsereJogada(listaJ, i, j, i, x);
+			}
+			else{
+				if (posAtual->tabu[i][x]->codigo < 0){
+					InsereJogada(listaJ, i, j, i, x);
+					posAtual->tabu[i][x]->ataques++;
+					break;
+				}
+		        if(x!=j && posAtual->tabu[i][x]!=NULL && posAtual->tabu[i][x]->codigo>0)
+					break;      
+			}
+		}
+		
+		for (int x = i; x > 0; x--){ //rainha branca direita e cima		
+			if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]== NULL){
+				InsereJogada(listaJ, i, j, x-1, coluna+1);
+			}
+			else if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, x-1, coluna+1);
+				posAtual->tabu[x - 1][coluna + 1]->ataques++;
+				break;
+			}
+			else if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]->codigo > 0){
+				break;
+			}
+			coluna++;
+		}
+		coluna = j;
+		for (int x = i; x < 7; x++){ //rainha branca direita e baixo	
+			if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]== NULL){
+				InsereJogada(listaJ, i, j, x+1, coluna+1);
+			}
+			else if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, x+1, coluna+1);
+				posAtual->tabu[x + 1][coluna + 1]->ataques++;
+				break;
+			}
+			else if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]->codigo > 0){
+				break;
+			}
+			coluna++;
+		}
+		coluna = j;
+		for (int x = i; x > 0; x--){ //rainha branca esquerda e cima	
+			if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]== NULL){
+				InsereJogada(listaJ, i, j, x-1, coluna-1);
+			}
+			else if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, x-1, coluna-1);
+				posAtual->tabu[x - 1][coluna - 1]->ataques++;
+				break;
+			}
+			else if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]->codigo > 0){
+				break;
+			}
+			coluna--;
+		}
+		coluna = j;
+		for (int x = i; x < 7; x++){ //rainha branca esquerda e baixo			
+			if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]== NULL){
+				InsereJogada(listaJ, i, j, x+1, coluna-1);
+			}
+			else if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, x+1, coluna-1);
+				posAtual->tabu[x + 1][coluna - 1]->ataques++;
+				break;
+			}
+			else if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]->codigo > 0){
+				break;
+			}
+			coluna--;
+		}
+	} 
+
+	
+	if (posAtual->tabu[i][j]->codigo == -5){ //rainha preta
+        
+		
+		for (int x = i; x >= 0; x--){	//rainha preta pra baixo
+		
+			if (posAtual->tabu[x][j] == NULL){
+				InsereJogada(listaJ, i, j, x, j);
+			}
+			else{
+				if (posAtual->tabu[x][j]->codigo>0){
+					InsereJogada(listaJ, i, j, x, j);
+					posAtual->tabu[x][j]->ataques++;
+					break;
+				}		
+		       	if(x!=i && posAtual->tabu[x][j]!= NULL && posAtual->tabu[x][j]->codigo<0)
+					break;
+			}
+		}
+
+		for (int x = i; x <= 7; x++){	//rainha preta pra cima
+			if (posAtual->tabu[x][j] == NULL){
+				InsereJogada(listaJ, i, j, x, j);
+			}
+			else{
+				if (posAtual->tabu[x][j]->codigo > 0){
+					InsereJogada(listaJ, i, j, x, j);
+					posAtual->tabu[x][j]->ataques++;
+					break;
+				}
+					if(x!=i && posAtual->tabu[x][j]!=NULL && posAtual->tabu[x][j]->codigo < 0){
+						break;}
+			}
+		}
+	
+		for (int x = j; x >= 0; x--){	//rainha preta pra esquerda
+			if (posAtual->tabu[i][x] == NULL){
+				InsereJogada(listaJ, i, j, i, x);
+			}
+			else{
+				if (posAtual->tabu[i][x]->codigo > 0){
+					InsereJogada(listaJ, i, j, i, x);
+					posAtual->tabu[i][x]->ataques++;
+					break;
+				}
+		        	if(x!=j && posAtual->tabu[i][x]!=NULL && posAtual->tabu[i][x]->codigo<0)
+						break;
+			}
+		}
+		
+		for (int x = j; x <= 7; x++){	//rainha preta pra direita
+			if (posAtual->tabu[i][x] == NULL){
+				InsereJogada(listaJ, i, j, i, x);
+			}
+			else{
+				if (posAtual->tabu[i][x]->codigo > 0){
+					InsereJogada(listaJ, i, j, i, x);
+					posAtual->tabu[i][x]->ataques++;
+					break;
+				}
+		        if(x!=j && posAtual->tabu[i][x]!=NULL && posAtual->tabu[i][x]->codigo<0)
+					break;      
+			}
+		}
+		
+		for (int x = i; x > 0; x--){ //rainha preta direita e cima		
+			if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]== NULL){
+				InsereJogada(listaJ, i, j, x-1, coluna+1);
+			}
+			else if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, x-1, coluna+1);
+				posAtual->tabu[x - 1][coluna + 1]->ataques++;
+				break;
+			}
+			else if (coluna < 7 && posAtual->tabu[x - 1][coluna + 1]->codigo < 0){
+				break;
+			}
+			coluna++;
+		}
+		coluna = j;
+		for (int x = i; x < 7; x++){ //rainha preta direita e baixo	
+			if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]== NULL){
+				InsereJogada(listaJ, i, j, x+1, coluna+1);
+			}
+			else if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, x+1, coluna+1);
+				posAtual->tabu[x + 1][coluna + 1]->ataques++;
+				break;
+			}
+			else if (coluna < 7 && posAtual->tabu[x + 1][coluna + 1]->codigo < 0){
+				break;
+			}
+			coluna++;
+		}
+		coluna = j;
+		for (int x = i; x > 0; x--){ //rainha preta esquerda e cima	
+			if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]== NULL){
+				InsereJogada(listaJ, i, j, x-1, coluna-1);
+			}
+			else if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, x-1, coluna-1);
+				posAtual->tabu[x - 1][coluna - 1]->ataques++;
+				break;
+			}
+			else if (coluna > 0 && posAtual->tabu[x - 1][coluna - 1]->codigo < 0){
+				break;
+			}
+			coluna--;
+		}
+		coluna = j;
+		for (int x = i; x < 7; x++){ //rainha preta esquerda e baixo			
+			if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]== NULL){
+				InsereJogada(listaJ, i, j, x+1, coluna-1);
+			}
+			else if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, x+1, coluna-1);
+				posAtual->tabu[x + 1][coluna - 1]->ataques++;
+				break;
+			}
+			else if (coluna > 0 && posAtual->tabu[x + 1][coluna - 1]->codigo < 0){
+				break;
+			}
+			coluna--;
+		}
+	} 
+	
+	if (posAtual->tabu[i][j]->codigo == 6){ //rei branco
+		if (i == 0 && j == 0){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo < 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 1] == NULL || posAtual->tabu[i + 1][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+1);
+				if (posAtual->tabu[i + 1][j + 1] != NULL && posAtual->tabu[i + 1][j + 1]->codigo < 0)
+					posAtual->tabu[i + 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo < 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+		}
+		if (i == 0 && j == 7){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo < 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 1] == NULL || posAtual->tabu[i + 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j-1);
+				if(posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo < 0)
+					posAtual->tabu[i + 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo < 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+		}
+		if (i == 0){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo < 0){
+
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo < 0){
+					printf("T3.1.3\n");
+					posAtual->tabu[i + 1][j]->ataques++;
+					printf("T3.1\n");}
+			}
+			if (posAtual->tabu[i + 1][j + 1] == NULL || posAtual->tabu[i + 1][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+1);
+				if(posAtual->tabu[i + 1][j + 1] != NULL && posAtual->tabu[i + 1][j + 1]->codigo < 0)
+					posAtual->tabu[i + 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 1] == NULL || posAtual->tabu[i + 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j-1);
+				if(posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo < 0)
+					posAtual->tabu[i + 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo < 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo < 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+		}
+		if (i == 7 && j == 7){
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo < 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo < 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo < 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+		}
+		if (i == 7 && j == 0){
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo < 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo < 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo < 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+		}
+		if (i == 7){
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo < 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j + 1] == NULL || posAtual->tabu[i - 1][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j+1);
+				if(posAtual->tabu[i - 1][j + 1]!= NULL && posAtual->tabu[i - 1][j + 1]->codigo < 0)
+					posAtual->tabu[i - 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo < 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo < 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo < 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+		}
+		if(j==0){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo < 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 1] == NULL || posAtual->tabu[i + 1][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+1);
+				if(posAtual->tabu[i + 1][j + 1]!= NULL && posAtual->tabu[i + 1][j + 1]->codigo < 0)
+					posAtual->tabu[i + 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo < 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo < 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j + 1] == NULL || posAtual->tabu[i - 1][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j+1);
+				if(posAtual->tabu[i - 1][j + 1]!= NULL && posAtual->tabu[i - 1][j + 1]->codigo < 0)
+					posAtual->tabu[i - 1][j + 1]->ataques++;
+			}
+		}
+		if(j==7){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo < 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 1] == NULL || posAtual->tabu[i + 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j-1);
+				if(posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo < 0)
+					posAtual->tabu[i + 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo < 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo < 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo < 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+		}
+		if (i != 0 && i != 7 && j != 0 && j != 7){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo < 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 1] == NULL || posAtual->tabu[i + 1][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j+1);
+				if(posAtual->tabu[i + 1][j + 1]!= NULL && posAtual->tabu[i + 1][j + 1]->codigo < 0)
+					posAtual->tabu[i + 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 1] == NULL || posAtual->tabu[i + 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i+1, j-1);
+				if(posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo < 0)
+					posAtual->tabu[i + 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo < 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo < 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo < 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j + 1] == NULL || posAtual->tabu[i - 1][j + 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j+1);
+				if(posAtual->tabu[i - 1][j + 1]!= NULL && posAtual->tabu[i - 1][j + 1]->codigo < 0)
+					posAtual->tabu[i - 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo < 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo < 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+		}
+	} 
+	
+	if (posAtual->tabu[i][j]->codigo == -6){ //rei preto
+		if (i == 0 && j == 0){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo > 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 1] == NULL || posAtual->tabu[i + 1][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+1);
+				if (posAtual->tabu[i + 1][j + 1] != NULL && posAtual->tabu[i + 1][j + 1]->codigo > 0)
+					posAtual->tabu[i + 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo > 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+		}
+		if (i == 0 && j == 7){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo > 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 1] == NULL || posAtual->tabu[i + 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j-1);
+				if(posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo > 0)
+					posAtual->tabu[i + 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo > 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+		}
+		if (i == 0){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo > 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 1] == NULL || posAtual->tabu[i + 1][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+1);
+				if(posAtual->tabu[i + 1][j + 1] != NULL && posAtual->tabu[i + 1][j + 1]->codigo > 0)
+					posAtual->tabu[i + 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 1] == NULL || posAtual->tabu[i + 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j-1);
+				if(posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo > 0)
+					posAtual->tabu[i + 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo > 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo > 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+		}
+		if (i == 7 && j == 7){
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo > 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo > 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo > 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+		}
+		if (i == 7 && j == 0){
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo > 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo > 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo > 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+		}
+		if (i == 7){
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo > 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j + 1] == NULL || posAtual->tabu[i - 1][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j+1);
+				if(posAtual->tabu[i - 1][j + 1]!= NULL && posAtual->tabu[i - 1][j + 1]->codigo > 0)
+					posAtual->tabu[i - 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo > 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo > 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo > 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+		}
+		if(j==0){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo > 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 1] == NULL || posAtual->tabu[i + 1][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+1);
+				if(posAtual->tabu[i + 1][j + 1]!= NULL && posAtual->tabu[i + 1][j + 1]->codigo > 0)
+					posAtual->tabu[i + 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo > 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo > 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j + 1] == NULL || posAtual->tabu[i - 1][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j+1);
+				if(posAtual->tabu[i - 1][j + 1]!= NULL && posAtual->tabu[i - 1][j + 1]->codigo > 0)
+					posAtual->tabu[i - 1][j + 1]->ataques++;
+			}
+		}
+		if(j==7){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo > 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 1] == NULL || posAtual->tabu[i + 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j-1);
+				if(posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo > 0)
+					posAtual->tabu[i + 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo > 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo > 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo > 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+		}
+		if (i != 0 && i != 7 && j != 0 && j != 7){
+			if (posAtual->tabu[i + 1][j]== NULL || posAtual->tabu[i + 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j);
+				if(posAtual->tabu[i + 1][j]!= NULL && posAtual->tabu[i + 1][j]->codigo > 0)
+					posAtual->tabu[i + 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j + 1] == NULL || posAtual->tabu[i + 1][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j+1);
+				if(posAtual->tabu[i + 1][j + 1]!= NULL && posAtual->tabu[i + 1][j + 1]->codigo > 0)
+					posAtual->tabu[i + 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i + 1][j - 1] == NULL || posAtual->tabu[i + 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i+1, j-1);
+				if(posAtual->tabu[i + 1][j - 1]!= NULL && posAtual->tabu[i + 1][j - 1]->codigo > 0)
+					posAtual->tabu[i + 1][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j + 1] == NULL || posAtual->tabu[i][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j+1);
+				if(posAtual->tabu[i][j + 1]!= NULL && posAtual->tabu[i][j + 1]->codigo > 0)
+					posAtual->tabu[i][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i][j - 1] == NULL || posAtual->tabu[i][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i, j-1);
+				if(posAtual->tabu[i][j - 1]!= NULL && posAtual->tabu[i][j - 1]->codigo > 0)
+					posAtual->tabu[i][j - 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j] == NULL || posAtual->tabu[i - 1][j]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j);
+				if(posAtual->tabu[i - 1][j]!= NULL && posAtual->tabu[i - 1][j]->codigo > 0)
+					posAtual->tabu[i - 1][j]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j + 1] == NULL || posAtual->tabu[i - 1][j + 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j+1);
+				if(posAtual->tabu[i - 1][j + 1]!= NULL && posAtual->tabu[i - 1][j + 1]->codigo > 0)
+					posAtual->tabu[i - 1][j + 1]->ataques++;
+			}
+			if (posAtual->tabu[i - 1][j - 1] == NULL || posAtual->tabu[i - 1][j - 1]->codigo > 0){
+				InsereJogada(listaJ, i, j, i-1, j-1);
+				if(posAtual->tabu[i - 1][j - 1]!= NULL && posAtual->tabu[i - 1][j - 1]->codigo > 0)
+					posAtual->tabu[i - 1][j - 1]->ataques++;
+			}
+		}
+	}
+  
+  return listaJ;
+}
+
+struct Peca* BuscaPeca(struct Peca* lista, int LPara, int CPara){
+	struct Peca *aux = lista->prox;
+	while (aux != lista && (aux->linha!=LPara || aux->coluna!=CPara)){
+		aux= aux->prox;
+	}
+	
+	return aux;
+}
+
+int ExecutaJogada (struct Posicao* posAtual, int lD, int cD, int lP, int cP){
+	
+	if(posAtual->tabu[lP][cP]==NULL){
+		posAtual->tabu[lD][cD]->linha=lP;
+		posAtual->tabu[lD][cD]->coluna=cP;
+		posAtual->tabu[lP][cP]=posAtual->tabu[lD][cD];
+		posAtual->tabu[lD][cD]=NULL;
+	}
+	else{
+		if(posAtual->tabu[lP][cP]->codigo<0){
+			struct Peca* aux=BuscaPeca(posAtual->pretas, lP, cP);
+			aux->ant->prox=aux->prox;
+			aux->prox->ant=aux->ant;
+			free(aux);
+			posAtual->qtdPretas--;
+			posAtual->tabu[lD][cD]->linha=lP;
+			posAtual->tabu[lD][cD]->coluna=cP;		
+			posAtual->tabu[lP][cP]=posAtual->tabu[lD][cD];	
+			posAtual->tabu[lD][cD]=NULL;
+		}
+		else{
+			struct Peca* aux=BuscaPeca(posAtual->brancas, lP, cP);
+			aux->ant->prox=aux->prox;
+			aux->prox->ant=aux->ant;
+			free(aux);
+			posAtual->tabu[lD][cD]->linha=lP;
+			posAtual->tabu[lD][cD]->coluna=cP;		
+			posAtual->tabu[lP][cP]=posAtual->tabu[lD][cD];	
+			posAtual->tabu[lD][cD]=NULL;
+			posAtual->qtdBrancas--;
+		}
+	}
+	
+	return 0;
+}
+
+void AnunciaVencedor(int flag){
+	Sleep(2000);
+	printf("\n");
+	if (flag == 6){
+		SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0xF0); printf("        +-------+-------+-------+-------+-------+\n");
+		printf("        |");
+		printf (" PARABÉNS! AS PEÇAS BRANCAS VENCERAM!  |\n");
+		printf("        +-------+-------+-------+-------+-------+\n\n\t");
+		SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x0F);
+	}
+	if (flag == -6){
+		SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x0F); printf("        +-------+-------+-------+-------+-------+\n");
+		printf("        |");
+		printf ("  PARABÉNS! AS PEÇAS PRETAS VENCERAM!  |\n");
+		printf("        +-------+-------+-------+-------+-------+\n\n\t");
+		SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x0F);
+	}
+}
+
+void Menu(){
+	char resp[2];
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x01); printf("       	+-------+-------+-------+-------+\n");
+	printf("       	|           ");
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x04); printf("BEM-VINDE!");
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x01); printf("          |\n");
+	printf("       	+-------+-------+-------+-------+\n");
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x04);
+	printf(" Está pronte para se tornar o mestre mundial de xadrez?\n\n> ");
+	scanf("%s", resp);
+	Sleep(500);
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x01); printf("                   +----------+\n");
+	printf("       	           |");
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x04); printf("BOA SORTE!");
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x01); printf("|\n");
+	printf("                   +----------+\n");
+	SetConsoleTextAttribute (GetStdHandle(STD_OUTPUT_HANDLE), 0x04);
+	fflush(stdin);
+	Sleep(1500);
+}
+
+void liberaMemoria(struct Peca* lista){
+	struct Peca* aux= lista->prox;
+	while(aux!=lista){
+		aux=aux->prox;
+		free(aux->ant);
+	}
+	free(lista);
+}
+
+void liberaMemoriaJogadas(struct Jogada* lista){
+	struct Jogada *aux= lista->prox;
+	while(aux!=lista){
+		aux=aux->prox;
+		free(aux->ant);
+	}
+	free(lista);
+}
+
+double AvaliaPosicao(struct Posicao* posAtual){
+	double avl=0;
+	
+	struct Peca *aux=posAtual->pretas->prox;
+	while(aux!=posAtual->pretas){
+		avl += aux->codigo*-1;
+		aux = aux->prox;
+	}
+	
+	aux= posAtual->brancas->prox;
+	while(aux!=posAtual->brancas){
+		avl += aux->codigo*-1;
+		aux = aux->prox;
+	} 
+	
+	return avl;
+}
+
+struct Jogada *Busca(struct Jogada* listaJ, int LPara, int CPara){
+	struct Jogada *aux = listaJ->prox;
+	
+	while(aux != listaJ && (aux->linhaPara!= LPara || aux->colunaPara!= CPara)){
+		aux=aux->prox;
+	}
+
+	if(aux != listaJ)
+		return aux;
+	else
+		return NULL;
+}
+
+void MudaTurno(struct Posicao* posAtual){
+	if(posAtual->jogVez==1)
+		posAtual->jogVez=-1;
+	else
+		posAtual->jogVez=1;
+}
+
+void Promove(struct Posicao* posAtual){
+	struct Peca* aux;
+	for(int i=0; i<8; i++){
+		if(posAtual->tabu[0][i]!=NULL && posAtual->tabu[0][i]->codigo==-1){
+			posAtual->tabu[0][i]->codigo=-5;
+			aux=BuscaPeca(posAtual->pretas, 0, i);
+			aux->codigo=-5;
+		}
+		if(posAtual->tabu[7][i]!=NULL && posAtual->tabu[7][i]->codigo==1){
+			posAtual->tabu[7][i]->codigo=5;
+			aux=BuscaPeca(posAtual->brancas, 7, i);
+			aux->codigo=5;
+		}
+	}
 }
 
 int main (){
     setlocale (LC_ALL, "");
-	int tabuleiro[9][9];
-	int *pT[9][9];
-	int item, flag, turno=0;
-	int i, j;
-
-	for (int i = 0; i < 9; i++){				//zerar tabuleiro
-		for (int j = 0; j < 9; j++){
-			tabuleiro[i][j] = 0;
-			pT[i][j] = &tabuleiro[i][j];	//associar cada casa da matriz a um ponteiro
-		}
-	}
-
-	IniciaTabuleiro (pT);	//passa matriz por ponteiro
-
-
-	jogada possiveis[30];
-	jogada *pP[30];
-
-	for (int i = 0; i < 30; i++){
-		pP[i] = &possiveis[i];
-	}
+	struct Posicao* posAtual = (struct Posicao*) malloc(sizeof(struct Posicao));
+  	struct Jogada* possi = (struct Jogada*) malloc(sizeof(struct Jogada));
+	struct Jogada* aux = (struct Jogada*) malloc(sizeof(struct Jogada));
+	int item, flag, turno=0, xD, yD, xP, yP;
+	double avlPos;
+	
+	Menu();
+	posAtual = IniciaTabuleiro ();
 
 	do{
-	    MostrarTabuleiro (tabuleiro);
-		flag = ChecarVencedor(pT);
+	    MostrarTabuleiro (posAtual);
+		flag = ChecarVencedor(posAtual);
+		avlPos= AvaliaPosicao(posAtual);
+		if(posAtual->tabu[0][3]!=NULL)
+			printf("%d\n", posAtual->tabu[0][3]->codigo);
 		if (flag != 0)
 			break;
-		printf ("Insira as coordenadas da peça que deseja movimentar\n");
-		scanf ("%d", &i);
-		scanf ("%d", &j);
+		printf("Insira as coordenadas da peça que deseja movimentar\n");
+		printf("> ");
+		scanf ("%d %d", &xD, &yD);
+		xD-=1;
+		yD-=1;
 		
-		if(tabuleiro[i][j]<0 && turno%2==0)
+		if (posAtual->tabu[xD][yD] == NULL || xD<0 || xD>7 || yD<0 || yD>7)
+				printf ("Coordenadas inválidas\n");
+		else if(posAtual->tabu[xD][yD]->codigo<0 && posAtual->jogVez==1)
 			printf("O turno atual é das peças brancas\n");
-		else if(tabuleiro[i][j]>0 && turno%2!=0)
+		else if(posAtual->tabu[xD][yD]->codigo>0 && posAtual->jogVez==-1)
 			printf("O turno atual é das peças pretas\n");
 		else{
-			if (tabuleiro[i][j] == 0 || i == 0 || j == 0)
-				printf ("Coordenadas inválidas\n");
-			else
-		{
-			MovimentoPossivel (pT, pP, i, j);
-    			
-			for (int x = 0; x < 30; x++){	//impedir que a propria coordenada fornecida seja uma jogada possivel
-				if (possiveis[x].linhaPara == i && possiveis[x].colunaPara == j){
-					possiveis[x].colunaPara = 0;
-					possiveis[x].linhaPara = 0;
-				}
-			}
-                
-                	if (possiveis[0].linhaPara == 0 && possiveis[0].colunaPara == 0){
-				printf("Não há movimentos possíveis para essa peça, escolha outra.\n");
+			possi = CalculaMovimentosPossiveis (posAtual, xD, yD);
+			if(possi->prox==possi){
+				printf("Não há movimentos para essa peça\n");
 			}
 			else{
-				printf("Para qual das coordenadas possiveis deseja mover a peça? Escolha um item:\n");
-				for (int x = 0; x < 30; x++){			//printar as possibilidades
-					if (possiveis[x].linhaPara != 0 && possiveis[x].colunaPara != 0){
-						printf ("%d: ", x+1);
-						printf ("%d ", possiveis[x].linhaPara);
-						printf ("%d \n", possiveis[x].colunaPara);
-					}
-				}
-				scanf ("%d", &item);
-				item-=1;
-				EscolherMovimento (pT, pP, i, j, item);
-				turno++;
+				do{
+					printf("Para onde deseja movimentar a peça?\n");
+					printf("> ");
+					scanf("%d %d",&xP, &yP);	
+					xP-=1;
+					yP-=1;
+					aux = Busca(possi, xP, yP);
+					if(aux == NULL)
+						printf("A peça não pode ir para as coordenadas selecionadas!\n");
+				}while(aux == NULL);
+				MudaTurno(posAtual);
+				ExecutaJogada(posAtual, xD, yD, xP, yP);
+				Promove(posAtual);
+				liberaMemoriaJogadas(possi);	
 			}
 		}
-	}
-        Sleep(2000);
-    	system ("cls");
-	}
-	while (flag == 0);
+	}while (flag == 0);
 	
-	if (flag == 6)
-		printf ("Parabéns! As peças brancas venceram!\n");
-	if (flag == -6)
-		printf ("Parabéns! As peças pretas venceram!\n");
-	
+	AnunciaVencedor(flag);
+	liberaMemoria(posAtual->brancas);
+	liberaMemoria(posAtual->pretas);
 	system("pause");
 	return 0;
 }
